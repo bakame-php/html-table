@@ -1,0 +1,14 @@
+* text=auto
+
+/.editorconfig                export-ignore
+/.gitattributes               export-ignore
+/.github                      export-ignore
+/.gitignore                   export-ignore
+/.php-cs-fixer.php            export-ignore
+/build                        export-ignore
+/test_files                   export-ignore
+/CHANGELOG.md                 export-ignore
+/phpstan.neon                 export-ignore
+/phpunit.xml                  export-ignore
+/README.md                    export-ignore
+/**/*Test.php                 export-ignore

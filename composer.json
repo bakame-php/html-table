@@ -32,7 +32,7 @@
     "ext-simplexml": "*",
     "ext-json": "*",
     "ext-mbstring": "*",
-    "league/csv": "^9.x-dev"
+    "league/csv": "^9.6.0"
   },
   "require-dev": {
     "ext-xdebug": "*",
