@@ -1,4 +1,4 @@
-# HTML Table as Tabular Data parser
+# HTML Table
 
 [![Author](http://img.shields.io/badge/author-@nyamsprod-blue.svg?style=flat-square)](https://twitter.com/nyamsprod)
 [![Software License](https://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat-square)](LICENSE)
@@ -37,7 +37,7 @@ $constraints->process($table)->fetchPairs('team', 'for');
 
 ## System Requirements
 
-**PHP >= 8.1** and **league\csv* >= 9.6.0* library are required.
+**PHP8.1+ and league\csv >= 9.9.0** library is required.
 
 ## Installation
 
@@ -59,24 +59,51 @@ The `Parser` is immutable, whenever you change a configuration a new instance is
 ```php
 use Bakame\HtmlTable\Parser;
 
-$table = Parser::new()->parseHTML('<table>...</table>');
-$table = Parser::new()->parseFile('path/to/html/file.html');
+$parser = Parser::new();
+
+$table = $parser->parseHTML('<table>...</table>');
+$table = $parser->parseFile('path/to/html/file.html');
 ```
 
 It is possible to configure the parser to improve HTML table resolution:
 
-- `tablePosition` : tells which table to parse in the HTML page can be the table.
-- `tableHeaderPosition`: tells where to find the table header row.
-- `tableHeader`: submit your own table header
-- `includeTableFooter`: include the table footer when parsing the table.
-- `excludeTableFooter`: exclude the table footer when parsing the table.
-- `ignoreTableHeader`: does not attempt to resolve the table header
-- `resolveTableHeader`: Attempt to resolve the table header
-- `ignoreXmlErrors`: ignore XML errors while loading the HTML source
-- `failOnXmlErrors`: throws an exception in case of XML errors while loading the HTML source
+### tablePosition
 
-Table section are defined via an Enum and are used to tell the parser where to look to find 
-the table header row.
+Tells which table to parse in the HTML page: If the single argument is
+
+- a string; it will represent the value of the table "id" attribute.
+- a positive integer or `0`; it will represent the table offset.
+
+```php
+use Bakame\HtmlTable\Parser;
+
+$parser = Parser::new()->tablePosition('table-id'); // parse the <table id='table-id>
+$parser = Parser::new()->tablePosition(3);          // parse the 4th table of the page
+```
+
+### ignoreTableHeader and resolveTableHeader
+
+Tells the parser to attempt or not table header resolution.
+
+```php
+use Bakame\HtmlTable\Parser;
+
+$parser = Parser::new()->ignoreTableHeader();   // no header table will be calculated
+$parser = Parser::new()->resolveTableHeader(3); // will attempt to resolve the table header
+```
+
+### tableHeaderPosition
+
+Tells where to locate and resolve the table header
+
+```php
+use Bakame\HtmlTable\Parser;
+use Bakame\HtmlTable\Section;
+
+$parser = Parser::new()->tableHeaderPosition(Section::Header, 3); // no header table will be calculated
+```
+
+use the `Bakame\HtmlTable\Section` enum to designate which table section to use to resolve the header
 
 ```php
 use Bakame\HtmlTable\Section;
@@ -90,7 +117,44 @@ enum Section: string
 }
 ```
 
-By default, if you try to parse an HTML page and you did not change any configuration the `Parser` will:
+If `Section::None` is used, `tr` tags will be used independently of their section.
+The second argument is the table header offset; it default to `0` (ie: the first row).
+
+### tableHeader
+
+You can specify directly the header of your table and override any other table header
+related configuration with this one
+
+```php
+use Bakame\HtmlTable\Parser;
+use Bakame\HtmlTable\Section;
+
+$parser = Parser::new()->tableHeader(['rank', 'team', 'winner']); // no header table will be calculated
+```
+
+### includeTableFooter and excludeTableFooter
+
+Tells whether the footer should be included when parsing the table content.
+
+```php
+use Bakame\HtmlTable\Parser;
+
+$parser = Parser::new()->includeTableFooter();   // tfoot is included during parsing
+$parser = Parser::new()->excludeTableFooter(3); // tfoot is excluded during parsing
+```
+
+### ignoreXmlErrors and failOnXmlErrors
+
+Tells whether the parser should ignore or throw in case of malformed HTML content.
+
+```php
+use Bakame\HtmlTable\Parser;
+
+$parser = Parser::new()->ignoreXmlErrors();   // ignore the XML errors
+$parser = Parser::new()->failOnXmlErrors(3); // throw on XML errors
+```
+
+By default, when calling the `Parser::new()` named constructor you will:
 
 - try to parse the first table found in the page
 - expect the table header row to be the first `tr` found in the `thead` section of your table
