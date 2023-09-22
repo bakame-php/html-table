@@ -1,0 +1,77 @@
+{
+  "name": "bakame/html-table",
+  "type": "library",
+  "description" : "convert html table into a PHP data structure",
+  "keywords": ["html", "table","import", "export", "read", "write", "filter", "convert", "transform"],
+  "license": "MIT",
+  "homepage" : "https://github.com/bakame-php/html-table",
+  "authors": [
+    {
+      "name" : "Ignace Nyamagana Butera",
+      "email" : "nyamsprod@gmail.com",
+      "homepage" : "https://github.com/nyamsprod/",
+      "role" : "Developer"
+    }
+  ],
+  "support": {
+    "docs": "https://github.com/bakame-php/html-table",
+    "issues": "https://github.com/bakame-php/html-table/issues",
+    "rss": "https://github.com/bakame-php/html-table/releases.atom",
+    "source": "https://github.com/bakame-php/html-table"
+  },
+  "funding": [
+    {
+      "type": "github",
+      "url": "https://github.com/sponsors/nyamsprod"
+    }
+  ],
+  "require": {
+    "php": "^8.1.2",
+    "ext-dom": "*",
+    "ext-libxml": "*",
+    "ext-simplexml": "*",
+    "ext-json": "*",
+    "ext-mbstring": "*",
+    "league/csv": "^9.x-dev"
+  },
+  "require-dev": {
+    "ext-xdebug": "*",
+    "friendsofphp/php-cs-fixer": "^v3.22.0",
+    "phpstan/phpstan": "^1.10.26",
+    "phpstan/phpstan-deprecation-rules": "^1.1.3",
+    "phpstan/phpstan-phpunit": "^1.3.13",
+    "phpstan/phpstan-strict-rules": "^1.5.1",
+    "phpunit/phpunit": "^10.3.1",
+    "symfony/var-dumper": "^6.3.3"
+  },
+  "autoload": {
+    "psr-4": {
+      "Bakame\\HtmlTable\\": "src"
+    }
+  },
+  "scripts": {
+    "phpcs": "PHP_CS_FIXER_IGNORE_ENV=1 php-cs-fixer fix -vvv --diff --dry-run --allow-risky=yes --ansi",
+    "phpcs:fix": "php-cs-fixer fix -vvv --allow-risky=yes --ansi",
+    "phpstan": "phpstan analyse -c phpstan.neon --ansi --memory-limit=192M",
+    "phpunit": "XDEBUG_MODE=coverage phpunit --coverage-text",
+    "test": [
+      "@phpunit",
+      "@phpstan",
+      "@phpcs"
+    ]
+  },
+  "scripts-descriptions": {
+    "phpcs": "Runs coding style test suite",
+    "phpstan": "Runs complete codebase static analysis",
+    "phpunit": "Runs unit and functional testing",
+    "test": "Runs full test suite"
+  },
+  "extra": {
+    "branch-alias": {
+      "dev-master": "1.x-dev"
+    }
+  },
+  "config": {
+    "sort-packages": true
+  }
+}
