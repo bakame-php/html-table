@@ -12,17 +12,15 @@ HTML Table. Once installed you will be able to do the following:
 
 ```php
 use Bakame\HtmlTable\Parser;
-use League\Csv\Statement;
 
 $table = Parser::new()
     ->tableHeader(['rank', 'move', 'team', 'player', 'won', 'drawn', 'lost', 'for', 'against', 'gd', 'points'])
     ->parseFile('https://www.bbc.com/sport/football/tables');
- 
- $constraints = Statement::create()
-    ->where(fn (array $row) => (int) $row['points'] >= 10)
-    ->orderBy(fn (array $rowA, array $rowB) => (int) $rowB['for'] <=> (int) $rowA['for']);
- 
-$constraints->process($table)->fetchPairs('team', 'for');
+
+$table
+    ->filter(fn (array $row) => (int) $row['points'] >= 10)
+    ->sorted(fn (array $rowA, array $rowB) => (int) $rowB['for'] <=> (int) $rowA['for'])
+    ->fetchPairs('team', 'for');
 
 // returns 
 // [
@@ -34,6 +32,10 @@ $constraints->process($table)->fetchPairs('team', 'for');
 //  "Arsenal" => "9"
 // ]
 ```
+
+The Package is responsible for the parsing of the HTML, the manipulation methods used
+are part of the `league\csv` package. Please refer to
+[its documentation](https://csv.thephpleague.com) for more information.
 
 ## System Requirements
 
