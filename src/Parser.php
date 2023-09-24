@@ -355,23 +355,28 @@ final class Parser
      */
     public function parseHTML(DOMDocument|DOMElement|SimpleXMLElement|Stringable|string $source): TabularDataReader
     {
-        $xpath = new DOMXPath($this->sourceToDomDocument($source));
         /** @var DOMNodeList<DOMElement> $query */
-        $query = $xpath->query($this->expression);
+        $query = (new DOMXPath($this->sourceToDomDocument($source)))->query($this->expression);
         $table = $query->item($this->tableOffset);
+        if (!$table instanceof DOMElement) {
+            throw new ParserError('The HTML table could not be found in the submitted html.');
+        }
 
-        return match (true) {
-            $table instanceof DOMElement => $this->convert(new DOMXPath($this->sourceToDomDocument($table))),
-            default => throw new ParserError('The HTML table could not be found in the submitted html.'),
+        $xpath = new DOMXPath($this->sourceToDomDocument($table));
+        $header = match (true) {
+            [] !== $this->tableHeader => $this->tableHeader,
+            $this->ignoreTableHeader => [],
+            default => $this->extractTableHeader($xpath),
         };
+
+        return new ResultSet($this->extractTableContents($xpath, $header), $header);
     }
 
     /**
      * @throws ParserError
      */
-    private function sourceToDomDocument(
-        DOMDocument|SimpleXMLElement|DOMElement|Stringable|string $document,
-    ): DOMDocument {
+    private function sourceToDomDocument(DOMDocument|SimpleXMLElement|DOMElement|Stringable|string $document): DOMDocument
+    {
         if ($document instanceof DOMDocument) {
             return $document;
         }
@@ -401,27 +406,12 @@ final class Parser
     }
 
     /**
-     * @throws ParserError
-     * @throws SyntaxError
-     */
-    private function convert(DOMXPath $xpath): TabularDataReader
-    {
-        $header = match (true) {
-            [] !== $this->tableHeader => $this->tableHeader,
-            $this->ignoreTableHeader => [],
-            default => $this->extractTableHeader($xpath, $this->tableHeaderSection->xpath()),
-        };
-
-        return new ResultSet($this->extractTableContents($xpath, $header), $header);
-    }
-
-    /**
      * @return array<string>
      */
-    private function extractTableHeader(DOMXPath $xpath, string $expression): array
+    private function extractTableHeader(DOMXPath $xpath): array
     {
         /** @var DOMNodeList<DOMElement> $query */
-        $query = $xpath->query($expression);
+        $query = $xpath->query($this->tableHeaderSection->xpath());
         /** @var DOMElement|null $tr */
         $tr = $query->item($this->tableHeaderOffset);
 

@@ -6,6 +6,8 @@ namespace Bakame\HtmlTable;
 
 use DOMDocument;
 use DOMElement;
+use League\Csv\TabularDataReader;
+use LimitIterator;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use SimpleXMLElement;
@@ -102,7 +104,7 @@ TABLE;
 
         self::assertSame(['prenoms', 'nombre', 'sexe', 'annee'], $table->getHeader());
         self::assertCount(4, $table);
-        self::assertSame($table->first(), [
+        self::assertSame($this->getNthRecord($table), [
             'prenoms' => 'Abdoulaye',
             'nombre' => '15',
             'sexe' => 'M',
@@ -117,7 +119,7 @@ TABLE;
 
         self::assertSame([], $table->getHeader());
         self::assertCount(4, $table);
-        self::assertSame($table->first(), [
+        self::assertSame($this->getNthRecord($table), [
             'Abdoulaye',
             '15',
             'M',
@@ -164,7 +166,7 @@ TABLE;
             'nombre' => '15',
             'sexe' => 'M',
             'annee' => '2004',
-        ], $table->first());
+        ], $this->getNthRecord($table));
 
         fclose($stream);
     }
@@ -204,7 +206,7 @@ TABLE;
             'nombre' => '15',
             'sexe' => 'M',
             'annee' => '2004',
-        ], $table->first());
+        ], $this->getNthRecord($table));
     }
 
     #[Test]
@@ -232,7 +234,7 @@ TABLE;
         $table = $parser->parseHTML(self::HTML);
 
         self::assertSame(['firstname', 'count', 'gender', 'year'], $table->getHeader());
-        self::assertSame($table->first(), [
+        self::assertSame($this->getNthRecord($table), [
             'firstname' => 'Abdoulaye',
             'count' => '15',
             'gender' => 'M',
@@ -256,8 +258,8 @@ TABLE;
 
         $table = Parser::new()->parseHTML($html);
 
-        self::assertSame($table->nth(1), ['Abdoulaye', 'Abdoulaye', 'Abdoulaye', '2004']);
-        self::assertSame($table->nth(0), ['prenoms', 'nombre', 'sexe', 'annee']);
+        self::assertSame($this->getNthRecord($table, 1), ['Abdoulaye', 'Abdoulaye', 'Abdoulaye', '2004']);
+        self::assertSame($this->getNthRecord($table), ['prenoms', 'nombre', 'sexe', 'annee']);
     }
 
     #[Test]
@@ -280,8 +282,8 @@ TABLE;
         $table = Parser::new()->parseHTML($dom);
 
         self::assertSame([], $table->getHeader());
-        self::assertSame($table->nth(0), ['Abdoulaye', 'Abdoulaye', 'Abdoulaye', '2004']);
-        self::assertSame($table->nth(1), ['Abel', '14', 'M', '2004']);
+        self::assertSame($this->getNthRecord($table), ['Abdoulaye', 'Abdoulaye', 'Abdoulaye', '2004']);
+        self::assertSame($this->getNthRecord($table, 1), ['Abel', '14', 'M', '2004']);
     }
 
     #[Test]
@@ -366,7 +368,7 @@ TABLE;
             ->parseHTML($html);
 
         self::assertSame([], $table->getHeader());
-        self::assertSame([], $table->first());
+        self::assertSame([], $this->getNthRecord($table));
     }
 
     #[Test]
@@ -393,13 +395,13 @@ TABLE;
             'nombre' => 15,
             'sexe' => 'M',
             'annee' => 2004,
-        ], $table->first());
+        ], $this->getNthRecord($table));
 
         fclose($stream);
     }
 
     #[Test]
-    public function it_can_handle_rowspan(): void
+    public function it_can_handle_rowspan_and_colspan(): void
     {
         $table = <<<TABLE
 <table>
@@ -445,10 +447,23 @@ TABLE;
 </table>
 TABLE;
 
+        $reducer = fn (TabularDataReader $reader, string $value): int => array_reduce([...$reader], fn (int $carry, array $record): int => $carry + (array_count_values($record)[$value] ?? 0), 0);
         $table = Parser::new()->parseHTML($table);
 
-        self::assertSame(2, $table->reduce(fn (int $carry, array $record): int => $carry + (array_count_values($record)['colspan'] ?? 0), 0));
-        self::assertSame(2, $table->reduce(fn (int $carry, array $record): int => $carry + (array_count_values($record)['rowspan'] ?? 0), 0));
-        self::assertSame(6, $table->reduce(fn (int $carry, array $record): int => $carry + (array_count_values($record)['colspan+rowspan'] ?? 0), 0));
+        self::assertSame(2, $reducer($table, 'colspan'));
+        self::assertSame(2, $reducer($table, 'rowspan'));
+        self::assertSame(6, $reducer($table, 'colspan+rowspan'));
+    }
+
+    /** @return array<string> */
+    private function getNthRecord(TabularDataReader $reader, int $offset = 0): array
+    {
+        $iterator = new LimitIterator($reader->getRecords(), $offset, 1);
+        $iterator->rewind();
+
+        /** @var array<string>|null $result */
+        $result = $iterator->current();
+
+        return $result ?? [];
     }
 }
