@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Bakame\HtmlTable;
 
 use ArrayIterator;
+use Closure;
 use DOMDocument;
 use DOMElement;
 use DOMNode;
@@ -55,6 +56,7 @@ final class Parser
         private readonly int $tableHeaderOffset,
         private readonly bool $throwOnXmlErrors,
         private readonly bool $includeTableFooter,
+        private readonly ?Closure $formatter = null,
     ) {
     }
 
@@ -69,6 +71,7 @@ final class Parser
             0,
             false,
             true,
+            null,
         );
     }
 
@@ -92,6 +95,7 @@ final class Parser
                     $this->tableHeaderOffset,
                     $this->throwOnXmlErrors,
                     $this->includeTableFooter,
+                    $this->formatter,
                 ),
                 default => throw new Error('the table offset must be a positive integer or the table id attribute value.'),
             },
@@ -105,6 +109,7 @@ final class Parser
                 $this->tableHeaderOffset,
                 $this->throwOnXmlErrors,
                 $this->includeTableFooter,
+                $this->formatter,
             ),
         };
     }
@@ -129,6 +134,7 @@ final class Parser
                 $this->tableHeaderOffset,
                 $this->throwOnXmlErrors,
                 $this->includeTableFooter,
+                $this->formatter,
             ),
         };
     }
@@ -146,6 +152,7 @@ final class Parser
                 $this->tableHeaderOffset,
                 $this->throwOnXmlErrors,
                 $this->includeTableFooter,
+                $this->formatter,
             ),
         };
     }
@@ -163,6 +170,7 @@ final class Parser
                 $this->tableHeaderOffset,
                 $this->throwOnXmlErrors,
                 $this->includeTableFooter,
+                $this->formatter,
             ),
         };
     }
@@ -184,6 +192,7 @@ final class Parser
                 $offset,
                 $this->throwOnXmlErrors,
                 $this->includeTableFooter,
+                $this->formatter,
             ),
         };
     }
@@ -201,6 +210,7 @@ final class Parser
                 $this->tableHeaderOffset,
                 $this->throwOnXmlErrors,
                 true,
+                $this->formatter,
             ),
         };
     }
@@ -218,6 +228,7 @@ final class Parser
                 $this->tableHeaderOffset,
                 $this->throwOnXmlErrors,
                 false,
+                $this->formatter,
             ),
         };
     }
@@ -235,6 +246,7 @@ final class Parser
                 $this->tableHeaderOffset,
                 true,
                 $this->includeTableFooter,
+                $this->formatter,
             ),
         };
     }
@@ -252,6 +264,40 @@ final class Parser
                 $this->tableHeaderOffset,
                 false,
                 $this->includeTableFooter,
+                $this->formatter,
+            ),
+        };
+    }
+
+    public function withFormatter(Closure $formatter): self
+    {
+        return new self(
+            $this->expression,
+            $this->tableOffset,
+            $this->tableHeader,
+            $this->ignoreTableHeader,
+            $this->tableHeaderSection,
+            $this->tableHeaderOffset,
+            $this->throwOnXmlErrors,
+            $this->includeTableFooter,
+            $formatter,
+        );
+    }
+
+    public function withoutFormatter(): self
+    {
+        return match (null) {
+            $this->formatter => $this,
+            default => new self(
+                $this->expression,
+                $this->tableOffset,
+                $this->tableHeader,
+                $this->ignoreTableHeader,
+                $this->tableHeaderSection,
+                $this->tableHeaderOffset,
+                $this->throwOnXmlErrors,
+                $this->includeTableFooter,
+                null,
             ),
         };
     }
@@ -472,11 +518,15 @@ final class Parser
     private function formatRecord(array $record, array $header): array
     {
         $cellCount = count($header);
-
-        return match ($cellCount) {
+        $record = match ($cellCount) {
             0 => $record,
             count($record) => array_combine($header, $record),
             default => array_combine($header, array_slice(array_pad($record, $cellCount, ''), 0, $cellCount)),
+        };
+
+        return match (null) {
+            $this->formatter => $record,
+            default => ($this->formatter)($record),
         };
     }
 }

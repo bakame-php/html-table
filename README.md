@@ -156,12 +156,37 @@ $parser = Parser::new()->ignoreXmlErrors();   // ignore the XML errors
 $parser = Parser::new()->failOnXmlErrors(3); // throw on XML errors
 ```
 
+### withFormatter and withoutFormatter
+
+Adds or remove a record formatter applied to the data extracted from the table before you
+can access it. The header is not affected by the formatter if it is defined.
+
+```php
+use Bakame\HtmlTable\Parser;
+
+$parser = Parser::new()->withFormatter($formatter); // attach a formatter to the parser
+$parser = Parser::new()->withoutFormatter();        // removed the attached formatter if it exists
+```
+
+The formatter closure signature should be:
+
+```php
+function (array $record): array;
+```
+
+If a header was defined or specified, the submitted record will have the header definition set,
+otherwise an array list is provided.
+
+
+### Default behaviour
+
 By default, when calling the `Parser::new()` named constructor you will:
 
 - try to parse the first table found in the page
 - expect the table header row to be the first `tr` found in the `thead` section of your table
 - include the table `tfoot` section
 - ignore XML errors.
+- no formatter is attached to the parser.
 
 ## Testing
 

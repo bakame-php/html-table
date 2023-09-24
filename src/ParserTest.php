@@ -49,6 +49,7 @@ TABLE;
                 ->tableHeader([])
                 ->resolveTableHeader()
                 ->ignoreXmlErrors()
+                ->withoutFormatter()
         );
     }
 
@@ -366,5 +367,34 @@ TABLE;
 
         self::assertSame([], $table->getHeader());
         self::assertSame([], $table->first());
+    }
+
+    #[Test]
+    public function it_uses_the_parse_formatter(): void
+    {
+        /** @var resource $stream */
+        $stream = fopen(dirname(__DIR__).'/test_files/table.html', 'r');
+        $table = Parser::new()
+            ->tablePosition('testb')
+            ->tableHeaderPosition(Section::None)
+            ->withFormatter(function (array $record): array {
+                $record = array_map(strtoupper(...), $record);
+                $record['nombre'] = (int) $record['nombre'];
+                $record['annee'] = (int) $record['annee'];
+
+                return $record;
+            })
+            ->parseFile($stream);
+
+        self::assertSame(['prenoms', 'nombre', 'sexe', 'annee'], $table->getHeader());
+        self::assertCount(5, $table);
+        self::assertSame([
+            'prenoms' => 'ABDOULAYE',
+            'nombre' => 15,
+            'sexe' => 'M',
+            'annee' => 2004,
+        ], $table->first());
+
+        fclose($stream);
     }
 }
