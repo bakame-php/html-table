@@ -67,7 +67,7 @@ final class Parser
             0,
             [],
             false,
-            Section::Header,
+            Section::thead,
             0,
             false,
             true,
@@ -442,6 +442,7 @@ final class Parser
         $table = $query->item(0);
         $it = new ArrayIterator();
         $header =  $this->tableHeader($header)->tableHeader;
+        $rowSpan = [];
         foreach ($table->childNodes as $childNode) {
             if (!$childNode instanceof DOMElement) {
                 continue;
@@ -449,13 +450,14 @@ final class Parser
 
             $nodeName = strtolower($childNode->nodeName);
             if ('tbody' === $nodeName || ('tfoot' === $nodeName && $this->includeTableFooter)) {
+                $rowSpanSection = [];
                 foreach ($childNode->childNodes as $tr) {
                     if (null !== ($record = $this->filterRecord($tr))) {
-                        $it->append($this->formatRecord($this->extractRecord($record), $header));
+                        $it->append($this->formatRecord($this->extractRecord($record, $rowSpanSection), $header));
                     }
                 }
             } elseif (null !== ($record = $this->filterRecord($childNode))) {
-                $it->append($this->formatRecord($this->extractRecord($record), $header));
+                $it->append($this->formatRecord($this->extractRecord($record, $rowSpan), $header));
             }
         }
 
@@ -486,12 +488,14 @@ final class Parser
     }
 
     /**
+     * @param array<int, array<array<string|null>>> $rowSpanIndices
+     *
      * @return array<string>
      */
-    private function extractRecord(DOMElement $tr): array
+    private function extractRecord(DOMElement $tr, array &$rowSpanIndices = []): array
     {
-        $getSpanSize = function (DOMElement $node): int {
-            $span = (int) $node->getAttribute('colspan');
+        $spanSize = function (DOMElement $node, string $attr): int {
+            $span = (int) $node->getAttribute($attr);
 
             return match (true) {
                 2 > $span, 1000 < $span => 1,
@@ -500,9 +504,30 @@ final class Parser
         };
 
         $row = [];
-        foreach ($tr->childNodes as $node) {
+        foreach ($tr->childNodes as $index => $node) {
+            if (array_key_exists($index, $rowSpanIndices)) {
+                $row = array_merge($row, array_shift($rowSpanIndices[$index]));  /* @phpstan-ignore-line */
+                if ([] === $rowSpanIndices[$index]) {
+                    unset($rowSpanIndices[$index]);
+                }
+            }
+
             if ($node instanceof DOMElement && in_array(strtolower($node->nodeName), self::CELL_TAGS, true)) {
-                $row = [...$row, ...array_fill(0, $getSpanSize($node), $node->nodeValue.'')];
+                $cells = array_fill(0, $spanSize($node, 'colspan'), $node->nodeValue.'');
+                $row = array_merge($row, $cells);
+                $rowSpanCount = $spanSize($node, 'rowspan');
+                if (1 < $rowSpanCount) {
+                    $rowSpanIndices[$index] = array_fill(0, $rowSpanCount - 1, $cells);
+                }
+            }
+        }
+
+        $index ??= -2;
+        ++$index;
+        if (array_key_exists($index, $rowSpanIndices)) {
+            $row = array_merge($row, array_shift($rowSpanIndices[$index])); /* @phpstan-ignore-line */
+            if ([] === $rowSpanIndices[$index]) {
+                unset($rowSpanIndices[$index]);
             }
         }
 

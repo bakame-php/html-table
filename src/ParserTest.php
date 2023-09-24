@@ -44,7 +44,7 @@ TABLE;
             $parser,
             $parser
                 ->tablePosition(0)
-                ->tableHeaderPosition(Section::Header, 0)
+                ->tableHeaderPosition(Section::thead, 0)
                 ->includeTableFooter()
                 ->tableHeader([])
                 ->resolveTableHeader()
@@ -92,7 +92,7 @@ TABLE;
     {
         $this->expectException(ParserError::class);
 
-        Parser::new()->tableHeaderPosition(Section::Header, -1); /* @phpstan-ignore-line */
+        Parser::new()->tableHeaderPosition(Section::thead, -1); /* @phpstan-ignore-line */
     }
 
     #[Test]
@@ -154,7 +154,7 @@ TABLE;
         $stream = fopen(dirname(__DIR__).'/test_files/table.html', 'r');
         $table = Parser::new()
             ->tablePosition('testb')
-            ->tableHeaderPosition(Section::None)
+            ->tableHeaderPosition(Section::none)
             ->parseFile($stream);
 
         self::assertSame(['prenoms', 'nombre', 'sexe', 'annee'], $table->getHeader());
@@ -194,7 +194,7 @@ TABLE;
 TABLE;
 
         $table = Parser::new()
-            ->tableHeaderPosition(Section::Body)
+            ->tableHeaderPosition(Section::tbody)
             ->parseHTML($html);
 
         self::assertSame(['prenoms', 'nombre', 'sexe', 'annee'], $table->getHeader());
@@ -320,7 +320,7 @@ TABLE;
         $simpleXML = simplexml_load_string($html);
 
         $table = Parser::new()
-            ->tableHeaderPosition(Section::Body)
+            ->tableHeaderPosition(Section::tbody)
             ->parseHTML($simpleXML);
 
         self::assertSame([], $table->getHeader());
@@ -339,7 +339,7 @@ TABLE;
 TABLE;
 
         $table = Parser::new()
-            ->tableHeaderPosition(Section::None)
+            ->tableHeaderPosition(Section::none)
             ->parseHTML($html);
 
         self::assertSame([], $table->getHeader());
@@ -370,13 +370,13 @@ TABLE;
     }
 
     #[Test]
-    public function it_uses_the_parse_formatter(): void
+    public function it_uses_the_parser_formatter(): void
     {
         /** @var resource $stream */
         $stream = fopen(dirname(__DIR__).'/test_files/table.html', 'r');
         $table = Parser::new()
             ->tablePosition('testb')
-            ->tableHeaderPosition(Section::None)
+            ->tableHeaderPosition(Section::none)
             ->withFormatter(function (array $record): array {
                 $record = array_map(strtoupper(...), $record);
                 $record['nombre'] = (int) $record['nombre'];
@@ -396,5 +396,59 @@ TABLE;
         ], $table->first());
 
         fclose($stream);
+    }
+
+    #[Test]
+    public function it_can_handle_rowspan(): void
+    {
+        $table = <<<TABLE
+<table>
+    <thead>
+        <tr>
+            <th>Col 1</th>
+            <th>Col 2</th>
+            <th>Col 3</th>
+            <th>Col 4</th>
+            <th>Col 5</th>
+        </tr>
+    </thead>
+    <tbody>
+    <tr>
+        <th>Col 1</th>
+        <th colspan="2">colspan</th>
+        <th>Col 4</th>
+        <th>Col 5</th>
+    </tr>
+    <tr>
+        <th>Col 1</th>
+        <th>Col 2</th>
+        <th colspan="3" rowspan="2">colspan+rowspan</th>
+    </tr>
+    <tr>
+        <th>Col 1</th>
+        <th>Col 2</th>
+    </tr>
+    <tr>
+        <th>Col 1</th>
+        <th rowspan="2">rowspan</th>
+        <th>Col 3</th>
+        <th>Col 4</th>
+        <th>Col 5</th>
+    </tr>
+    <tr>
+        <th>Col 1</th>
+        <th>Col 3</th>
+        <th>Col 4</th>
+        <th>Col 5</th>
+    </tr>
+    </tbody>
+</table>
+TABLE;
+
+        $table = Parser::new()->parseHTML($table);
+
+        self::assertSame(2, $table->reduce(fn (int $carry, array $record): int => $carry + (array_count_values($record)['colspan'] ?? 0), 0));
+        self::assertSame(2, $table->reduce(fn (int $carry, array $record): int => $carry + (array_count_values($record)['rowspan'] ?? 0), 0));
+        self::assertSame(6, $table->reduce(fn (int $carry, array $record): int => $carry + (array_count_values($record)['colspan+rowspan'] ?? 0), 0));
     }
 }

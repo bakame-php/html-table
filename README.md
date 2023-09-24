@@ -102,7 +102,7 @@ Tells where to locate and resolve the table header
 use Bakame\HtmlTable\Parser;
 use Bakame\HtmlTable\Section;
 
-$parser = Parser::new()->tableHeaderPosition(Section::Header, 3); // no header table will be calculated
+$parser = Parser::new()->tableHeaderPosition(Section::thead, 3); // no header table will be calculated
 ```
 
 use the `Bakame\HtmlTable\Section` enum to designate which table section to use to resolve the header

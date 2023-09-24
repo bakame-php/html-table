@@ -12,7 +12,8 @@ All Notable changes to `bakame/html-table` will be documented in this file.
 
 ### Fixed
 
-- None
+- Add support for table `rowspan` attribute
+- Renamed `Section` enum values. The Enum is no longer a backed enum.
 
 ### Deprecated
 
