@@ -76,7 +76,7 @@ final class Parser
     }
 
     /**
-     * @throws Error
+     * @throws ParserError
      */
     public function tablePosition(int|string $positionOrId): self
     {
@@ -97,9 +97,9 @@ final class Parser
                     $this->includeTableFooter,
                     $this->formatter,
                 ),
-                default => throw new Error('the table offset must be a positive integer or the table id attribute value.'),
+                default => throw new ParserError('the table offset must be a positive integer or the table id attribute value.'),
             },
-            1 === preg_match(",\s,", $positionOrId) => throw new Error("The id attribute's value must not contain whitespace (spaces, tabs etc.)"),
+            1 === preg_match(",\s,", $positionOrId) => throw new ParserError("The id attribute's value must not contain whitespace (spaces, tabs etc.)"),
             default => new self(
                 $expression,
                 0,
@@ -117,14 +117,14 @@ final class Parser
     /**
      * @param array<string> $headerRow
      *
-     * @throws Error
+     * @throws ParserError
      */
     public function tableHeader(array $headerRow): self
     {
         return match (true) {
             $headerRow === $this->tableHeader => $this,
-            $headerRow !== ($filteredHeader = array_filter($headerRow, is_string(...))) => throw new Error('The header record contains non string colum names.'),
-            $headerRow !== array_unique($filteredHeader) => throw Error::dueToDuplicateHeaderColumnNames($headerRow),
+            $headerRow !== ($filteredHeader = array_filter($headerRow, is_string(...))) => throw new ParserError('The header record contains non string colum names.'),
+            $headerRow !== array_unique($filteredHeader) => throw ParserError::dueToDuplicateHeaderColumnNames($headerRow),
             default => new self(
                 $this->expression,
                 $this->tableOffset,
@@ -182,7 +182,7 @@ final class Parser
     {
         return match (true) {
             $section === $this->tableHeaderSection && $offset === $this->tableHeaderOffset => $this,
-            $offset < 0 => throw new Error('The table header row offset must be a positive integer or 0.'), /* @phpstan-ignore-line */
+            $offset < 0 => throw new ParserError('The table header row offset must be a positive integer or 0.'), /* @phpstan-ignore-line */
             default => new self(
                 $this->expression,
                 $this->tableOffset,
@@ -306,7 +306,7 @@ final class Parser
      * @param resource|string $filenameOrStream
      * @param resource|null $filenameContext
      *
-     * @throws Error
+     * @throws ParserError
      * @throws SyntaxError
      */
     public function parseFile($filenameOrStream, $filenameContext = null): TabularDataReader
@@ -323,7 +323,7 @@ final class Parser
         restore_error_handler();
 
         if (!is_resource($resource)) {
-            throw new Error('`'.$filenameOrStream.'`: failed to open stream: No such file or directory.');
+            throw new ParserError('`'.$filenameOrStream.'`: failed to open stream: No such file or directory.');
         }
 
         $html = $this->streamToString($resource);
@@ -335,7 +335,7 @@ final class Parser
     /**
      * @param resource $stream
      *
-     * @throws Error
+     * @throws ParserError
      */
     private function streamToString($stream): string
     {
@@ -344,13 +344,13 @@ final class Parser
         restore_error_handler();
 
         return match (false) {
-            $html => throw new Error('The resource could not be read.'),
+            $html => throw new ParserError('The resource could not be read.'),
             default => $html,
         };
     }
 
     /**
-     * @throws Error
+     * @throws ParserError
      * @throws SyntaxError
      */
     public function parseHTML(DOMDocument|DOMElement|SimpleXMLElement|Stringable|string $source): TabularDataReader
@@ -362,12 +362,12 @@ final class Parser
 
         return match (true) {
             $table instanceof DOMElement => $this->convert(new DOMXPath($this->sourceToDomDocument($table))),
-            default => throw new Error('The HTML table could not be found in the submitted html.'),
+            default => throw new ParserError('The HTML table could not be found in the submitted html.'),
         };
     }
 
     /**
-     * @throws Error
+     * @throws ParserError
      */
     private function sourceToDomDocument(
         DOMDocument|SimpleXMLElement|DOMElement|Stringable|string $document,
@@ -395,13 +395,13 @@ final class Parser
         libxml_clear_errors();
 
         return match (true) {
-            $this->throwOnXmlErrors && [] !== $errors => throw Error::dueToLibXmlErrors($errors),
+            $this->throwOnXmlErrors && [] !== $errors => throw ParserError::dueToLibXmlErrors($errors),
             default => $dom,
         };
     }
 
     /**
-     * @throws Error
+     * @throws ParserError
      * @throws SyntaxError
      */
     private function convert(DOMXPath $xpath): TabularDataReader

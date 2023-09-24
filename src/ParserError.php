@@ -16,7 +16,7 @@ use function sprintf;
 
 use const PHP_EOL;
 
-class Error extends InvalidArgumentException
+class ParserError extends InvalidArgumentException
 {
     /** @var array<string>  */
     private array $duplicateColumnNames = [];
@@ -48,7 +48,6 @@ class Error extends InvalidArgumentException
 
         $instance = new self('The header record contains duplicate column names: `'.implode('`, `', $duplicateColumnNames).'`.');
         $instance->duplicateColumnNames = $duplicateColumnNames;
-
 
         return $instance;
     }

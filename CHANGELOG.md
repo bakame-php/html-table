@@ -8,6 +8,7 @@ All Notable changes to `bakame/html-table` will be documented in this file.
 
 - `Parser::withFormatter`
 - `Parser::withoutFormatter`
+- `ParserError` to replace `Error` exception
 
 ### Fixed
 
@@ -19,7 +20,7 @@ All Notable changes to `bakame/html-table` will be documented in this file.
 
 ### Removed
 
-- None
+- `Error` exception is renamed `ParserError`
 
 ## [0.1.0] - 2023-09-22
 

@@ -57,7 +57,7 @@ TABLE;
     public function it_will_throw_if_the_header_contains_duplicate_values(): void
     {
         $headerRow = ['foo', 'foo', 'toto', 'toto', 'baz'];
-        $this->expectException(Error::class);
+        $this->expectException(ParserError::class);
         $this->expectExceptionMessage('The header record contains duplicate column names: `foo`, `toto`.');
 
         Parser::new()->tableHeader($headerRow);
@@ -66,7 +66,7 @@ TABLE;
     #[Test]
     public function it_will_throw_if_the_header_does_not_only_contains_string(): void
     {
-        $this->expectException(Error::class);
+        $this->expectException(ParserError::class);
 
         Parser::new()->tableHeader(['foo', 1]); /* @phpstan-ignore-line */
     }
@@ -74,7 +74,7 @@ TABLE;
     #[Test]
     public function it_will_throw_if_the_identifier_is_invalid(): void
     {
-        $this->expectException(Error::class);
+        $this->expectException(ParserError::class);
 
         Parser::new()->tablePosition('foo bar');
     }
@@ -82,7 +82,7 @@ TABLE;
     #[Test]
     public function it_will_throw_if_the_identifier_is_a_negative_integer(): void
     {
-        $this->expectException(Error::class);
+        $this->expectException(ParserError::class);
 
         Parser::new()->tablePosition(-1);
     }
@@ -90,7 +90,7 @@ TABLE;
     #[Test]
     public function it_will_throw_if_the_table_header_row_offset_is_negative(): void
     {
-        $this->expectException(Error::class);
+        $this->expectException(ParserError::class);
 
         Parser::new()->tableHeaderPosition(Section::Header, -1); /* @phpstan-ignore-line */
     }
@@ -172,7 +172,7 @@ TABLE;
     #[Test]
     public function it_will_fail_to_load_a_missing_file(): void
     {
-        $this->expectException(Error::class);
+        $this->expectException(ParserError::class);
 
         Parser::new()->parseFile('/path/tp/my/heart.html');
     }
@@ -210,7 +210,7 @@ TABLE;
     #[Test]
     public function it_will_throw_if_the_html_is_malformed(): void
     {
-        $this->expectExceptionObject(new Error('The HTML table could not be found in the submitted html.'));
+        $this->expectExceptionObject(new ParserError('The HTML table could not be found in the submitted html.'));
 
         Parser::new()->parseHTML('vasdfadadf');
     }
@@ -218,7 +218,7 @@ TABLE;
     #[Test]
     public function it_will_throw_if_no_table_is_found(): void
     {
-        $this->expectExceptionObject(new Error('The HTML table could not be found in the submitted html.'));
+        $this->expectExceptionObject(new ParserError('The HTML table could not be found in the submitted html.'));
 
         Parser::new()->parseHTML('<ol><li>foo</li></ol>');
     }
@@ -291,7 +291,7 @@ TABLE;
 df<body></p>sghfd
 TABLE;
 
-        $this->expectException(Error::class);
+        $this->expectException(ParserError::class);
 
         Parser::new()
             ->failOnXmlErrors()
@@ -301,7 +301,7 @@ TABLE;
     #[Test]
     public function it_will_fail_to_load_other_html_tag(): void
     {
-        $this->expectException(Error::class);
+        $this->expectException(ParserError::class);
 
         Parser::new()->parseHTML(new DOMElement('p', 'I know who you are'));
     }
