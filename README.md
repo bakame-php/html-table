@@ -177,7 +177,6 @@ function (array $record): array;
 If a header was defined or specified, the submitted record will have the header definition set,
 otherwise an array list is provided.
 
-
 ### Default behaviour
 
 By default, when calling the `Parser::new()` named constructor you will:
@@ -195,7 +194,6 @@ The library:
 - has a [PHPUnit](https://phpunit.de) test suite
 - has a coding style compliance test suite using [PHP CS Fixer](https://cs.sensiolabs.org/).
 - has a code analysis compliance test suite using [PHPStan](https://github.com/phpstan/phpstan).
-- is compliant with [the language agnostic HTTP Structured Fields Test suite](https://github.com/httpwg/structured-field-tests).
 
 To run the tests, run the following command from the project folder.
 
