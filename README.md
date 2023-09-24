@@ -110,17 +110,17 @@ use the `Bakame\HtmlTable\Section` enum to designate which table section to use 
 ```php
 use Bakame\HtmlTable\Section;
 
-enum Section: string
+enum Section
 {
-    case Header = 'thead';
-    case Body = 'tbody';
-    case Footer = 'tfoot';
-    case None = '';
+    case thead;
+    case tbody;
+    case tfoot;
+    case none;
 }
 ```
 
-If `Section::None` is used, `tr` tags will be used independently of their section.
-The second argument is the table header offset; it default to `0` (ie: the first row).
+If `Section::none` is used, `tr` tags will be used independently of their section.
+The second argument is the table header offset; it defaults to `0` (ie: the first row).
 
 ### tableHeader
 
@@ -133,6 +133,8 @@ use Bakame\HtmlTable\Section;
 
 $parser = Parser::new()->tableHeader(['rank', 'team', 'winner']); // no header table will be calculated
 ```
+
+**If you specify a non empty array as the table header, it will take precedence over any other table header related options.**
 
 ### includeTableFooter and excludeTableFooter
 
