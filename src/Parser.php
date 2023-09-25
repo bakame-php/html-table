@@ -21,7 +21,10 @@ use Stringable;
 use function array_combine;
 use function array_fill;
 use function array_filter;
+use function array_key_exists;
+use function array_merge;
 use function array_pad;
+use function array_shift;
 use function array_slice;
 use function array_unique;
 use function count;
@@ -309,7 +312,7 @@ final class Parser
      * @throws ParserError
      * @throws SyntaxError
      */
-    public function parseFile($filenameOrStream, $filenameContext = null): TabularDataReader
+    public function parseFile(mixed $filenameOrStream, $filenameContext = null): TabularDataReader
     {
         if (is_resource($filenameOrStream)) {
             return $this->parseHTML($this->streamToString($filenameOrStream));
@@ -333,23 +336,6 @@ final class Parser
     }
 
     /**
-     * @param resource $stream
-     *
-     * @throws ParserError
-     */
-    private function streamToString($stream): string
-    {
-        set_error_handler(fn (int $errno, string $errstr, string $errfile, int $errline) => true);
-        $html = stream_get_contents($stream);
-        restore_error_handler();
-
-        return match (false) {
-            $html => throw new ParserError('The resource could not be read.'),
-            default => $html,
-        };
-    }
-
-    /**
      * @throws ParserError
      * @throws SyntaxError
      */
@@ -370,6 +356,23 @@ final class Parser
         };
 
         return new ResultSet($this->extractTableContents($xpath, $header), $header);
+    }
+
+    /**
+     * @param resource $stream
+     *
+     * @throws ParserError
+     */
+    private function streamToString($stream): string
+    {
+        set_error_handler(fn (int $errno, string $errstr, string $errfile, int $errline) => true);
+        $html = stream_get_contents($stream);
+        restore_error_handler();
+
+        return match (false) {
+            $html => throw new ParserError('The resource could not be read.'),
+            default => $html,
+        };
     }
 
     /**
