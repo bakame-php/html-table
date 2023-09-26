@@ -2,7 +2,7 @@
 
 All Notable changes to `bakame/html-table` will be documented in this file.
 
-## [Next](https://github.com/bakame-php/http-structured-fields/compare/0.1.0...master) - TBD
+## [0.2.0](https://github.com/bakame-php/html-table/compare/0.1.0...0.2.0) - 2023-09-26
 
 ### Added
 
@@ -14,6 +14,7 @@ All Notable changes to `bakame/html-table` will be documented in this file.
 
 - Add support for table `rowspan` attribute
 - Renamed `Section` enum values. The Enum is no longer a backed enum.
+- Renamed `Parser::parseHTML` into `Parser::parseHtml` for consistency
 
 ### Deprecated
 

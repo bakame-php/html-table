@@ -63,7 +63,7 @@ use Bakame\HtmlTable\Parser;
 
 $parser = Parser::new();
 
-$table = $parser->parseHTML('<table>...</table>');
+$table = $parser->parseHtml('<table>...</table>');
 $table = $parser->parseFile('path/to/html/file.html');
 ```
 

@@ -315,7 +315,7 @@ final class Parser
     public function parseFile(mixed $filenameOrStream, $filenameContext = null): TabularDataReader
     {
         if (is_resource($filenameOrStream)) {
-            return $this->parseHTML($this->streamToString($filenameOrStream));
+            return $this->parseHtml($this->streamToString($filenameOrStream));
         }
 
         set_error_handler(fn (int $errno, string $errstr, string $errfile, int $errline) => true);
@@ -332,14 +332,14 @@ final class Parser
         $html = $this->streamToString($resource);
         fclose($resource);
 
-        return $this->parseHTML($html);
+        return $this->parseHtml($html);
     }
 
     /**
      * @throws ParserError
      * @throws SyntaxError
      */
-    public function parseHTML(DOMDocument|DOMElement|SimpleXMLElement|Stringable|string $source): TabularDataReader
+    public function parseHtml(DOMDocument|DOMElement|SimpleXMLElement|Stringable|string $source): TabularDataReader
     {
         /** @var DOMNodeList<DOMElement> $query */
         $query = (new DOMXPath($this->sourceToDomDocument($source)))->query($this->expression);

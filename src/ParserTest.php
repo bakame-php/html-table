@@ -100,7 +100,7 @@ TABLE;
     #[Test]
     public function it_can_load_the_first_html_table_found_by_default(): void
     {
-        $table = Parser::new()->parseHTML(self::HTML);
+        $table = Parser::new()->parseHtml(self::HTML);
 
         self::assertSame(['prenoms', 'nombre', 'sexe', 'annee'], $table->getHeader());
         self::assertCount(4, $table);
@@ -115,7 +115,7 @@ TABLE;
     #[Test]
     public function it_can_load_the_first_html_table_found_by_default_without_the_header(): void
     {
-        $table = Parser::new()->ignoreTableHeader()->parseHTML(self::HTML);
+        $table = Parser::new()->ignoreTableHeader()->parseHtml(self::HTML);
 
         self::assertSame([], $table->getHeader());
         self::assertCount(4, $table);
@@ -197,7 +197,7 @@ TABLE;
 
         $table = Parser::new()
             ->tableHeaderPosition(Section::tbody)
-            ->parseHTML($html);
+            ->parseHtml($html);
 
         self::assertSame(['prenoms', 'nombre', 'sexe', 'annee'], $table->getHeader());
         self::assertCount(5, $table);
@@ -214,7 +214,7 @@ TABLE;
     {
         $this->expectExceptionObject(new ParserError('The HTML table could not be found in the submitted html.'));
 
-        Parser::new()->parseHTML('vasdfadadf');
+        Parser::new()->parseHtml('vasdfadadf');
     }
 
     #[Test]
@@ -222,7 +222,7 @@ TABLE;
     {
         $this->expectExceptionObject(new ParserError('The HTML table could not be found in the submitted html.'));
 
-        Parser::new()->parseHTML('<ol><li>foo</li></ol>');
+        Parser::new()->parseHtml('<ol><li>foo</li></ol>');
     }
 
     #[Test]
@@ -231,7 +231,7 @@ TABLE;
         $parser = Parser::new()
             ->tableHeader(['firstname', 'count', 'gender', 'year']);
 
-        $table = $parser->parseHTML(self::HTML);
+        $table = $parser->parseHtml(self::HTML);
 
         self::assertSame(['firstname', 'count', 'gender', 'year'], $table->getHeader());
         self::assertSame($this->getNthRecord($table), [
@@ -256,7 +256,7 @@ TABLE;
 </table>
 TABLE;
 
-        $table = Parser::new()->parseHTML($html);
+        $table = Parser::new()->parseHtml($html);
 
         self::assertSame($this->getNthRecord($table, 1), ['Abdoulaye', 'Abdoulaye', 'Abdoulaye', '2004']);
         self::assertSame($this->getNthRecord($table), ['prenoms', 'nombre', 'sexe', 'annee']);
@@ -279,7 +279,7 @@ TABLE;
         $dom = new DOMDocument();
         $dom->loadHTML($html);
 
-        $table = Parser::new()->parseHTML($dom);
+        $table = Parser::new()->parseHtml($dom);
 
         self::assertSame([], $table->getHeader());
         self::assertSame($this->getNthRecord($table), ['Abdoulaye', 'Abdoulaye', 'Abdoulaye', '2004']);
@@ -297,7 +297,7 @@ TABLE;
 
         Parser::new()
             ->failOnXmlErrors()
-            ->parseHTML($html);
+            ->parseHtml($html);
     }
 
     #[Test]
@@ -305,7 +305,7 @@ TABLE;
     {
         $this->expectException(ParserError::class);
 
-        Parser::new()->parseHTML(new DOMElement('p', 'I know who you are'));
+        Parser::new()->parseHtml(new DOMElement('p', 'I know who you are'));
     }
 
     #[Test]
@@ -323,7 +323,7 @@ TABLE;
 
         $table = Parser::new()
             ->tableHeaderPosition(Section::tbody)
-            ->parseHTML($simpleXML);
+            ->parseHtml($simpleXML);
 
         self::assertSame([], $table->getHeader());
     }
@@ -342,7 +342,7 @@ TABLE;
 
         $table = Parser::new()
             ->tableHeaderPosition(Section::none)
-            ->parseHTML($html);
+            ->parseHtml($html);
 
         self::assertSame([], $table->getHeader());
     }
@@ -365,7 +365,7 @@ TABLE;
 
         $table = Parser::new()
             ->excludeTableFooter()
-            ->parseHTML($html);
+            ->parseHtml($html);
 
         self::assertSame([], $table->getHeader());
         self::assertSame([], $this->getNthRecord($table));
@@ -448,7 +448,7 @@ TABLE;
 TABLE;
 
         $reducer = fn (TabularDataReader $reader, string $value): int => array_reduce([...$reader], fn (int $carry, array $record): int => $carry + (array_count_values($record)[$value] ?? 0), 0);
-        $table = Parser::new()->parseHTML($table);
+        $table = Parser::new()->parseHtml($table);
 
         self::assertSame(2, $reducer($table, 'colspan'));
         self::assertSame(2, $reducer($table, 'rowspan'));
