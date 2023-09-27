@@ -7,7 +7,7 @@ namespace Bakame\HtmlTable;
 use DOMDocument;
 use DOMElement;
 use League\Csv\TabularDataReader;
-use LimitIterator;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use SimpleXMLElement;
@@ -52,6 +52,7 @@ TABLE;
                 ->resolveTableHeader()
                 ->ignoreXmlErrors()
                 ->withoutFormatter()
+                ->defaultCaption()
         );
     }
 
@@ -74,11 +75,26 @@ TABLE;
     }
 
     #[Test]
-    public function it_will_throw_if_the_identifier_is_invalid(): void
+    #[DataProvider('providesInvalidIdentifier')]
+    public function it_will_throw_if_the_identifier_is_invalid(string|int $identifier): void
     {
         $this->expectException(ParserError::class);
 
-        Parser::new()->tablePosition('foo bar');
+        Parser::new()->tablePosition($identifier);
+    }
+
+    /**
+     * @return iterable<string, array{identifier:string}>
+     */
+    public static function providesInvalidIdentifier(): iterable
+    {
+        yield 'invalid identifier' => [
+            'identifier' => 'foo bar',
+        ];
+
+        yield 'invalid identifier with invalid characters' => [
+            'identifier' => 'fo/"ba/r',
+        ];
     }
 
     #[Test]
@@ -98,13 +114,33 @@ TABLE;
     }
 
     #[Test]
+    public function it_will_throw_if_the_xpath_expression_is_invalid(): void
+    {
+        $this->expectException(ParserError::class);
+
+        Parser::new()->tableXPathPosition('//table@@invalid');
+    }
+
+    #[Test]
+    public function it_will_fail_to_load_any_element_other_than_a_table(): void
+    {
+        $html = <<<HTML
+<p>this is not a table</p>
+HTML;
+        $this->expectException(ParserError::class);
+        $this->expectExceptionMessage('Expected a table element to be selected; received `p` instead.');
+        Parser::new()->tableXPathPosition('//p')->parseHtml($html);
+
+    }
+
+    #[Test]
     public function it_can_load_the_first_html_table_found_by_default(): void
     {
         $table = Parser::new()->parseHtml(self::HTML);
 
         self::assertSame(['prenoms', 'nombre', 'sexe', 'annee'], $table->getHeader());
         self::assertCount(4, $table);
-        self::assertSame($this->getNthRecord($table), [
+        self::assertSame($table->first(), [
             'prenoms' => 'Abdoulaye',
             'nombre' => '15',
             'sexe' => 'M',
@@ -119,7 +155,7 @@ TABLE;
 
         self::assertSame([], $table->getHeader());
         self::assertCount(4, $table);
-        self::assertSame($this->getNthRecord($table), [
+        self::assertSame($table->first(), [
             'Abdoulaye',
             '15',
             'M',
@@ -166,7 +202,7 @@ TABLE;
             'nombre' => '15',
             'sexe' => 'M',
             'annee' => '2004',
-        ], $this->getNthRecord($table));
+        ], $table->first());
 
         fclose($stream);
     }
@@ -206,7 +242,7 @@ TABLE;
             'nombre' => '15',
             'sexe' => 'M',
             'annee' => '2004',
-        ], $this->getNthRecord($table));
+        ], $table->nth(0));
     }
 
     #[Test]
@@ -234,7 +270,7 @@ TABLE;
         $table = $parser->parseHtml(self::HTML);
 
         self::assertSame(['firstname', 'count', 'gender', 'year'], $table->getHeader());
-        self::assertSame($this->getNthRecord($table), [
+        self::assertSame($table->first(), [
             'firstname' => 'Abdoulaye',
             'count' => '15',
             'gender' => 'M',
@@ -258,8 +294,8 @@ TABLE;
 
         $table = Parser::new()->parseHtml($html);
 
-        self::assertSame($this->getNthRecord($table, 1), ['Abdoulaye', 'Abdoulaye', 'Abdoulaye', '2004']);
-        self::assertSame($this->getNthRecord($table), ['prenoms', 'nombre', 'sexe', 'annee']);
+        self::assertSame($table->nth(1), ['Abdoulaye', 'Abdoulaye', 'Abdoulaye', '2004']);
+        self::assertSame($table->nth(0), ['prenoms', 'nombre', 'sexe', 'annee']);
     }
 
     #[Test]
@@ -282,8 +318,8 @@ TABLE;
         $table = Parser::new()->parseHtml($dom);
 
         self::assertSame([], $table->getHeader());
-        self::assertSame($this->getNthRecord($table), ['Abdoulaye', 'Abdoulaye', 'Abdoulaye', '2004']);
-        self::assertSame($this->getNthRecord($table, 1), ['Abel', '14', 'M', '2004']);
+        self::assertSame($table->first(), ['Abdoulaye', 'Abdoulaye', 'Abdoulaye', '2004']);
+        self::assertSame($table->nth(1), ['Abel', '14', 'M', '2004']);
     }
 
     #[Test]
@@ -368,7 +404,7 @@ TABLE;
             ->parseHtml($html);
 
         self::assertSame([], $table->getHeader());
-        self::assertSame([], $this->getNthRecord($table));
+        self::assertSame([], $table->first());
     }
 
     #[Test]
@@ -395,7 +431,7 @@ TABLE;
             'nombre' => 15,
             'sexe' => 'M',
             'annee' => 2004,
-        ], $this->getNthRecord($table));
+        ], $table->first());
 
         fclose($stream);
     }
@@ -447,7 +483,10 @@ TABLE;
 </table>
 TABLE;
 
-        $reducer = fn (TabularDataReader $reader, string $value): int => array_reduce([...$reader], fn (int $carry, array $record): int => $carry + (array_count_values($record)[$value] ?? 0), 0);
+        $reducer = fn (TabularDataReader $reader, string $value): int => $reader->reduce(  /* @phpstan-ignore-line */
+            fn (int $carry, array $record): int => $carry + (array_count_values($record)[$value] ?? 0),
+            0
+        );
         $table = Parser::new()->parseHtml($table);
 
         self::assertSame(2, $reducer($table, 'colspan'));
@@ -455,15 +494,40 @@ TABLE;
         self::assertSame(6, $reducer($table, 'colspan+rowspan'));
     }
 
-    /** @return array<string> */
-    private function getNthRecord(TabularDataReader $reader, int $offset = 0): array
+    #[Test]
+    #[DataProvider('providesCaption')]
+    public function it_can_load_the_table_caption(string $table, ?string $defaultCaption, ?string $expected): void
     {
-        $iterator = new LimitIterator($reader->getRecords(), $offset, 1);
-        $iterator->rewind();
+        self::assertSame($expected, Parser::new()->defaultCaption($defaultCaption)->parseHtml($table)->getCaption());
+    }
 
-        /** @var array<string>|null $result */
-        $result = $iterator->current();
+    /**
+     * @return iterable<string, array{table: string, expected: ?string}>
+     */
+    public static function providesCaption(): iterable
+    {
+        yield 'table without caption and no configured caption' => [
+            'table' => '<table><tr><th>title 1</th><th>title 2</th><th>title 3</th></tr><tr><td>content 1</td><td>content 2</td><td>content 3</td></tr></table>',
+            'defaultCaption' => null,
+            'expected' => null,
+        ];
 
-        return $result ?? [];
+        yield 'table with caption and no configured caption' => [
+            'table' => '<table><caption>this is the table title</caption><tr><th>title 1</th><th>title 2</th><th>title 3</th></tr><tr><td>content 1</td><td>content 2</td><td>content 3</td></tr></table>',
+            'defaultCaption' => null,
+            'expected' => 'this is the table title',
+        ];
+
+        yield 'table without caption and a configured caption' => [
+            'table' => '<table><tr><th>title 1</th><th>title 2</th><th>title 3</th></tr><tr><td>content 1</td><td>content 2</td><td>content 3</td></tr></table>',
+            'defaultCaption' => 'this is the table title',
+            'expected' => 'this is the table title',
+        ];
+
+        yield 'table with multiple caption and no configured caption - we select the first one found' => [
+            'table' => '<table><caption>first caption</caption><caption>second caption</caption><tr><th>title 1</th><th>title 2</th><th>title 3</th></tr><tr><td>content 1</td><td>content 2</td><td>content 3</td></tr></table>',
+            'defaultCaption' => null,
+            'expected' => 'first caption',
+        ];
     }
 }

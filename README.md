@@ -39,7 +39,7 @@ are part of the `league\csv` package. Please refer to
 
 ## System Requirements
 
-**PHP8.1+ and league\csv >= 9.9.0** library is required.
+**league\csv >= 9.11.0** library is required.
 
 ## Installation
 
@@ -69,9 +69,16 @@ $table = $parser->parseFile('path/to/html/file.html');
 
 It is possible to configure the parser to improve HTML table resolution:
 
-### tablePosition
+### tablePosition and tableXpathPosition
 
-Tells which table to parse in the HTML page: If the single argument is
+Selecting the table to parse in the HTML page can be done usage two (2) methods
+`Parser::tablePosition` and `Parser::tableXpathPosition`
+
+If you know the table position in the page in relation with its integer offset or if
+you know it's `id` attribute value you should use `Parser::tablePosition` otherwise
+for any other complex situations you should favor `Parser::tableXpathPosition`
+which expects an `xpath` expression. If the expression is valid, the first
+result of the expression will be returned.
 
 - a string; it will represent the value of the table "id" attribute.
 - a positive integer or `0`; it will represent the table offset.
@@ -80,7 +87,22 @@ Tells which table to parse in the HTML page: If the single argument is
 use Bakame\HtmlTable\Parser;
 
 $parser = Parser::new()->tablePosition('table-id'); // parse the <table id='table-id>
-$parser = Parser::new()->tablePosition(3);          // parse the 4th table of the page
+$parser = Parser::new()->tablePosition(3);  // parse the 4th table of the page
+$parser = Parser::new()->tableXPathPosition("//main/div/table");
+```
+
+`Parser::tableXpathPosition` and `Parser::tablePosition` override each other. It is 
+recommended to use one or the other but not both at the same time.
+
+### defaultCaption
+
+You can optionnally define a caption for your table if none is present of found during parsing.
+
+```php
+use Bakame\HtmlTable\Parser;
+
+$parser = Parser::new()->defaultCaption('this is a generated caption');
+$parser = Parser::new()->defaultCaption(null);  // reset the default caption to null
 ```
 
 ### ignoreTableHeader and resolveTableHeader
@@ -188,6 +210,49 @@ By default, when calling the `Parser::new()` named constructor you will:
 - include the table `tfoot` section
 - ignore XML errors.
 - no formatter is attached to the parser.
+
+###  parseHtml and parseFile
+
+Once set you can use `parseHtml` or `parseFile` to extract and parse your table. If parsing
+is not possible a `ParseError` exception will be thrown. 
+
+`parseHtml` parses an HTML page represented by:
+
+- a `string`, 
+- a `Stringable` object, 
+- a `DOMDocument`,
+- a `DOMElement`,
+- and/or a `SimpleXMLElement`
+
+whereas `parseFile` works with a filepath and/or a PHP readable stream.
+
+Both methods return a `Table` instance which implements the `League\Csv\TabularDataReader`
+interface and also give access to the table caption if present via the `getCaption` method.
+
+```php
+use Bakame\HtmlTable\Parser;
+
+$html = <<<HTML
+<div>
+<table>
+    <caption>Songs</caption>
+    <thead>
+        <tr><th>Title</th><th>Singer</th><th>Country</th></tr>
+    </thead>
+    <tbody>
+        <tr><td>Nakei Nairobi</td><td>Mbilia Bel</td><td rowspan="3">DRC Congo</td></tr>
+        <tr><td>Muvaro</td><td>Zaiko Langa Langa</td></tr>
+        <tr><td>Nzinzi</td><td>Emeneya</td></tr>
+    </tbody>
+</table>
+</div>
+HTML;
+
+$table = Parser::new()->parseHtml($html);
+$table->getCaption(); //returns 'Songs'
+$table->getHeader();  //returns ['Title','Singer', 'Country']
+$table->nth(2); //returns ["Title" => "Nzinzi", "Singer" => "Emeneya", "Country" => "DRC Congo"]
+```
 
 ## Testing
 

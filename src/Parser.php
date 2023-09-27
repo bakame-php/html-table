@@ -31,7 +31,6 @@ use function count;
 use function fclose;
 use function fopen;
 use function in_array;
-use function is_int;
 use function is_resource;
 use function libxml_clear_errors;
 use function libxml_get_errors;
@@ -52,22 +51,21 @@ final class Parser
      */
     private function __construct(
         private readonly string $expression,
-        private readonly int $tableOffset,
         private readonly array $tableHeader,
         private readonly bool $ignoreTableHeader,
         private readonly Section $tableHeaderSection,
         private readonly int $tableHeaderOffset,
         private readonly bool $throwOnXmlErrors,
         private readonly bool $includeTableFooter,
-        private readonly ?Closure $formatter = null,
+        private readonly ?Closure $formatter,
+        private readonly ?string $caption,
     ) {
     }
 
     public static function new(): self
     {
         return new self(
-            '//table',
-            0,
+            '(//table)[1]',
             [],
             false,
             Section::thead,
@@ -75,37 +73,18 @@ final class Parser
             false,
             true,
             null,
+            null,
         );
     }
 
-    /**
-     * @throws ParserError
-     */
-    public function tablePosition(int|string $positionOrId): self
+    public function tableXPathPosition(string $expression): self
     {
-        $expression = '//table[@id="'.$positionOrId.'"]';
-
-        return match (true) {
-            $positionOrId === $this->tableOffset,
+        set_error_handler(fn (int $errno, string $errstr, string $errfile, int $errline) => true);
+        $newInstace = match (true) {
             $expression === $this->expression => $this,
-            is_int($positionOrId) => match (true) {
-                $positionOrId > -1 => new self(
-                    '//table',
-                    $positionOrId,
-                    $this->tableHeader,
-                    $this->ignoreTableHeader,
-                    $this->tableHeaderSection,
-                    $this->tableHeaderOffset,
-                    $this->throwOnXmlErrors,
-                    $this->includeTableFooter,
-                    $this->formatter,
-                ),
-                default => throw new ParserError('the table offset must be a positive integer or the table id attribute value.'),
-            },
-            1 === preg_match(",\s,", $positionOrId) => throw new ParserError("The id attribute's value must not contain whitespace (spaces, tabs etc.)"),
+            false === (new DOMXPath(new DOMDocument()))->query($expression) => throw new ParserError('The xpath expression `'.$expression.'` is invalie.'),
             default => new self(
                 $expression,
-                0,
                 $this->tableHeader,
                 $this->ignoreTableHeader,
                 $this->tableHeaderSection,
@@ -113,8 +92,27 @@ final class Parser
                 $this->throwOnXmlErrors,
                 $this->includeTableFooter,
                 $this->formatter,
+                $this->caption,
             ),
         };
+        restore_error_handler();
+
+        return $newInstace;
+    }
+
+    /**
+     * @throws ParserError
+     */
+    public function tablePosition(int|string $positionOrId): self
+    {
+        return self::tableXPathPosition(match (true) {
+            is_string($positionOrId) => match (true) {
+                1 === preg_match(",\s,", $positionOrId) => throw new ParserError("The id attribute's value must not contain whitespace (spaces, tabs etc.)"),
+                default => '(//table[@id="'.$positionOrId.'"])[1]',
+            },
+            $positionOrId < 0 => throw new ParserError('the table offset must be a positive integer or the table id attribute value.'),
+            default => '(//table)['.($positionOrId + 1).']',
+        });
     }
 
     /**
@@ -130,7 +128,6 @@ final class Parser
             $headerRow !== array_unique($filteredHeader) => throw ParserError::dueToDuplicateHeaderColumnNames($headerRow),
             default => new self(
                 $this->expression,
-                $this->tableOffset,
                 $headerRow,
                 $this->ignoreTableHeader,
                 $this->tableHeaderSection,
@@ -138,6 +135,7 @@ final class Parser
                 $this->throwOnXmlErrors,
                 $this->includeTableFooter,
                 $this->formatter,
+                $this->caption,
             ),
         };
     }
@@ -148,7 +146,6 @@ final class Parser
             true => $this,
             false => new self(
                 $this->expression,
-                $this->tableOffset,
                 $this->tableHeader,
                 true,
                 $this->tableHeaderSection,
@@ -156,6 +153,7 @@ final class Parser
                 $this->throwOnXmlErrors,
                 $this->includeTableFooter,
                 $this->formatter,
+                $this->caption,
             ),
         };
     }
@@ -166,7 +164,6 @@ final class Parser
             false => $this,
             true => new self(
                 $this->expression,
-                $this->tableOffset,
                 $this->tableHeader,
                 false,
                 $this->tableHeaderSection,
@@ -174,6 +171,7 @@ final class Parser
                 $this->throwOnXmlErrors,
                 $this->includeTableFooter,
                 $this->formatter,
+                $this->caption,
             ),
         };
     }
@@ -188,7 +186,6 @@ final class Parser
             $offset < 0 => throw new ParserError('The table header row offset must be a positive integer or 0.'), /* @phpstan-ignore-line */
             default => new self(
                 $this->expression,
-                $this->tableOffset,
                 $this->tableHeader,
                 $this->ignoreTableHeader,
                 $section,
@@ -196,6 +193,7 @@ final class Parser
                 $this->throwOnXmlErrors,
                 $this->includeTableFooter,
                 $this->formatter,
+                $this->caption,
             ),
         };
     }
@@ -206,7 +204,6 @@ final class Parser
             true => $this,
             false => new self(
                 $this->expression,
-                $this->tableOffset,
                 $this->tableHeader,
                 $this->ignoreTableHeader,
                 $this->tableHeaderSection,
@@ -214,6 +211,7 @@ final class Parser
                 $this->throwOnXmlErrors,
                 true,
                 $this->formatter,
+                $this->caption,
             ),
         };
     }
@@ -224,7 +222,6 @@ final class Parser
             false => $this,
             true => new self(
                 $this->expression,
-                $this->tableOffset,
                 $this->tableHeader,
                 $this->ignoreTableHeader,
                 $this->tableHeaderSection,
@@ -232,6 +229,7 @@ final class Parser
                 $this->throwOnXmlErrors,
                 false,
                 $this->formatter,
+                $this->caption,
             ),
         };
     }
@@ -242,7 +240,6 @@ final class Parser
             true => $this,
             false => new self(
                 $this->expression,
-                $this->tableOffset,
                 $this->tableHeader,
                 $this->ignoreTableHeader,
                 $this->tableHeaderSection,
@@ -250,6 +247,7 @@ final class Parser
                 true,
                 $this->includeTableFooter,
                 $this->formatter,
+                $this->caption,
             ),
         };
     }
@@ -260,7 +258,6 @@ final class Parser
             false => $this,
             true => new self(
                 $this->expression,
-                $this->tableOffset,
                 $this->tableHeader,
                 $this->ignoreTableHeader,
                 $this->tableHeaderSection,
@@ -268,6 +265,7 @@ final class Parser
                 false,
                 $this->includeTableFooter,
                 $this->formatter,
+                $this->caption,
             ),
         };
     }
@@ -276,7 +274,6 @@ final class Parser
     {
         return new self(
             $this->expression,
-            $this->tableOffset,
             $this->tableHeader,
             $this->ignoreTableHeader,
             $this->tableHeaderSection,
@@ -284,6 +281,7 @@ final class Parser
             $this->throwOnXmlErrors,
             $this->includeTableFooter,
             $formatter,
+            $this->caption,
         );
     }
 
@@ -293,7 +291,6 @@ final class Parser
             $this->formatter => $this,
             default => new self(
                 $this->expression,
-                $this->tableOffset,
                 $this->tableHeader,
                 $this->ignoreTableHeader,
                 $this->tableHeaderSection,
@@ -301,6 +298,25 @@ final class Parser
                 $this->throwOnXmlErrors,
                 $this->includeTableFooter,
                 null,
+                $this->caption,
+            ),
+        };
+    }
+
+    public function defaultCaption(?string $caption = null): self
+    {
+        return match ($this->caption) {
+            $caption => $this,
+            default => new self(
+                $this->expression,
+                $this->tableHeader,
+                $this->ignoreTableHeader,
+                $this->tableHeaderSection,
+                $this->tableHeaderOffset,
+                $this->throwOnXmlErrors,
+                $this->includeTableFooter,
+                $this->formatter,
+                $caption,
             ),
         };
     }
@@ -339,13 +355,18 @@ final class Parser
      * @throws ParserError
      * @throws SyntaxError
      */
-    public function parseHtml(DOMDocument|DOMElement|SimpleXMLElement|Stringable|string $source): TabularDataReader
+    public function parseHtml(DOMDocument|DOMElement|SimpleXMLElement|Stringable|string $source): Table
     {
         /** @var DOMNodeList<DOMElement> $query */
         $query = (new DOMXPath($this->sourceToDomDocument($source)))->query($this->expression);
-        $table = $query->item($this->tableOffset);
+        $table = $query->item(0);
         if (!$table instanceof DOMElement) {
             throw new ParserError('The HTML table could not be found in the submitted html.');
+        }
+
+        $tagName = strtolower($table->nodeName);
+        if ('table' !== $tagName) {
+            throw new ParserError('Expected a table element to be selected; received `'.$tagName.'` instead.');
         }
 
         $xpath = new DOMXPath($this->sourceToDomDocument($table));
@@ -355,7 +376,11 @@ final class Parser
             default => $this->extractTableHeader($xpath),
         };
 
-        return new ResultSet($this->extractTableContents($xpath, $header), $header);
+        /** @var DOMNodeList<DOMElement> $result */
+        $result = $xpath->query('(//caption)[1]');
+        $caption = $result->item(0)?->nodeValue ?? $this->caption;
+
+        return new Table(new ResultSet($this->extractTableContents($xpath, $header), $header), $caption);
     }
 
     /**
