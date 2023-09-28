@@ -7,8 +7,8 @@
 [![Total Downloads](https://img.shields.io/packagist/dt/bakame/html-table.svg?style=flat-square)](https://packagist.org/packages/bakame/html-table)
 [![Sponsor development of this project](https://img.shields.io/badge/sponsor%20this%20package-%E2%9D%A4-ff69b4.svg?style=flat-square)](https://github.com/sponsors/nyamsprod)
 
-`bakame/html-table` is a small PHP package that allows you to parse, import tabular data represented as
-HTML Table. Once installed you will be able to do the following:
+`bakame/html-table` is a small PHP package that allows you to parse, import and manipualte
+tabular data represented as HTML Table. Once installed you will be able to do the following:
 
 ```php
 use Bakame\HtmlTable\Parser;
@@ -33,10 +33,6 @@ $table
 // ]
 ```
 
-The Package is responsible for the parsing of the HTML, the manipulation methods used
-are part of the `league\csv` package. Please refer to
-[its documentation](https://csv.thephpleague.com) for more information.
-
 ## System Requirements
 
 **league\csv >= 9.11.0** library is required.
@@ -53,10 +49,27 @@ composer require bakame/html-table
 
 The `Parser` can convert a file (a PHP stream or a Path with an optional context like `fopen`)
 or an HTML document into a `League\Csv\TabularData` implementing object. Once converted you
-can use all the methods and feature made available by this interface
-(see [ResultSet](https://csv.thephpleague.com/9.0/reader/resultset/)) for more information.
+can use all the methods and feature made available by the interface (see [ResultSet](https://csv.thephpleague.com/9.0/reader/resultset/))
+for more information.
 
 **The `Parser` itself is immutable, whenever you change a configuration option a new instance is returned.**
+
+**The `Parser` constructor is private to instantiate the object you are required to use the `new` method instead**
+
+```php
+use Bakame\HtmlTable\Parser;
+
+$parser = Parser::new()
+    ->ignoreTableHeader()
+    ->ignoreXmlErrors()
+    ->withoutFormatter()
+    ->tableCaption('This is a beautiful table');
+```
+
+### parseHtml and parseFile
+
+To extract and parse your table use either the `parseHtml` or `parseFile` methods.
+If parsing is not possible a `ParseError` exception will be thrown.
 
 ```php
 use Bakame\HtmlTable\Parser;
@@ -67,20 +80,18 @@ $table = $parser->parseHtml('<table>...</table>');
 $table = $parser->parseFile('path/to/html/file.html');
 ```
 
-### parseHtml and parseFile
-
-The `parseHtml` or `parseFile` methods extract and parse your table. If parsing
-is not possible a `ParseError` exception will be thrown.
-
 `parseHtml` parses an HTML page represented by:
 
 - a `string`,
 - a `Stringable` object,
 - a `DOMDocument`,
 - a `DOMElement`,
-- and/or a `SimpleXMLElement`
+- or a `SimpleXMLElement`
 
-whereas `parseFile` works with a filepath and/or a PHP readable stream.
+whereas `parseFile` works with:
+
+- a filepath,
+- or a PHP readable stream.
 
 Both methods return a `Table` instance which implements the `League\Csv\TabularDataReader`
 interface and also give access to the table caption if present via the `getCaption` method.
@@ -137,36 +148,33 @@ By default, when calling the `Parser::new()` named constructor the parser will:
 - have no formatter attached.
 - have no default caption to used if none is present in the table.
 
-Each of the following settings can be changed to improve HTML to object conversion for your specific needs:
+Each of the following settings can be changed to improve the conversion against your business rules:
 
 ### tablePosition and tableXpathPosition
 
-Selecting the table to parse in the HTML page can be done usage two (2) methods
+Selecting the table to parse in the HTML page can be done using two (2) methods
 `Parser::tablePosition` and `Parser::tableXpathPosition`
 
 If you know the table position in the page in relation with its integer offset or if
 you know it's `id` attribute value you should use `Parser::tablePosition` otherwise
-for any other complex situations you should favor `Parser::tableXpathPosition`
-which expects an `xpath` expression. If the expression is valid, the first
-result of the expression will be returned.
-
-- a string; it will represent the value of the table "id" attribute.
-- a positive integer or `0`; it will represent the table offset.
+favor `Parser::tableXpathPosition` which expects an `xpath` expression.
+If the expression is valid, and a list of table is found, the first result will be returned.
 
 ```php
 use Bakame\HtmlTable\Parser;
 
-$parser = Parser::new()->tablePosition('table-id'); // parse the <table id='table-id>
-$parser = Parser::new()->tablePosition(3);  // parse the 4th table of the page
+$parser = Parser::new()->tablePosition('table-id'); // parses the <table id='table-id'>
+$parser = Parser::new()->tablePosition(3); // parses the 4th table of the page
 $parser = Parser::new()->tableXPathPosition("//main/div/table");
+//parse the first table that matches the xpath expression
 ```
 
-`Parser::tableXpathPosition` and `Parser::tablePosition` override each other. It is 
-recommended to use one or the other but not both at the same time.
+**`Parser::tableXpathPosition` and `Parser::tablePosition` override each other. It is 
+recommended to use one or the other but not both at the same time.**
 
 ### tableCaption
 
-You can optionnally define a caption for your table if none is present or found during parsing.
+You can optionally define a caption for your table if none is present or found during parsing.
 
 ```php
 use Bakame\HtmlTable\Parser;
@@ -175,18 +183,13 @@ $parser = Parser::new()->tableCaption('this is a generated caption');
 $parser = Parser::new()->tableCaption(null);  // remove any default caption set
 ```
 
-### ignoreTableHeader and resolveTableHeader
+### tableHeader, tableHeaderPosition, ignoreTableHeader and resolveTableHeader
 
-Tells the parser to attempt or not table header resolution.
+The following settings configure the `Parser` in relation to the table header. By default,
+the parser will try to parse the first `tr` tag found in the `thead` section of the table.
+But you can override this behaviour using one of these settings:
 
-```php
-use Bakame\HtmlTable\Parser;
-
-$parser = Parser::new()->ignoreTableHeader();  // no table header will be resolved
-$parser = Parser::new()->resolveTableHeader(); // will attempt to resolve the table header
-```
-
-### tableHeaderPosition
+#### tableHeaderPosition
 
 Tells where to locate and resolve the table header
 
@@ -198,7 +201,8 @@ $parser = Parser::new()->tableHeaderPosition(Section::thead, 3);
 // header is the 4th row in the <thead> table section
 ```
 
-use the `Bakame\HtmlTable\Section` enum to designate which table section to use to resolve the header
+The method uses the `Bakame\HtmlTable\Section` enum to designate which table section to use
+to resolve the header
 
 ```php
 use Bakame\HtmlTable\Section;
@@ -213,12 +217,24 @@ enum Section
 ```
 
 If `Section::tr` is used, `tr` tags will be used independently of their section.
-The second argument is the table header offset; it defaults to `0` (ie: the first row).
+The second argument is the table header `tr` offset; it defaults to `0` (ie: the first row).
 
-### tableHeader
+#### ignoreTableHeader and resolveTableHeader
+
+Instructs the parser to resolve or not the table header using `tableHeaderPosition` configuration.
+If no resolution is done, no header will be included in the returned `Table` instance.
+
+```php
+use Bakame\HtmlTable\Parser;
+
+$parser = Parser::new()->ignoreTableHeader();  // no table header will be resolved
+$parser = Parser::new()->resolveTableHeader(); // will attempt to resolve the table header
+```
+
+#### tableHeader
 
 You can specify directly the header of your table and override any other table header
-related configuration with this one
+related configuration with this configuration
 
 ```php
 use Bakame\HtmlTable\Parser;
@@ -231,6 +247,19 @@ $parser = Parser::new()->tableHeader(['rank', 'team', 'winner']);
 
 **Because it is a tabular data each cell MUST be unique otherwise an exception will be thrown**
 
+You can skip or re-arrange the source columns by skipping them by their offsets and/or by
+re-ordering the offsets.
+
+```php
+use Bakame\HtmlTable\Parser;
+use Bakame\HtmlTable\Section;
+
+$parser = Parser::new()->tableHeader([3 => 'rank',  7 => 'winner', 5 => 'team']);
+// only 3 column will be extracted the 4th, 6th and 8th columns
+// and re-arrange as 'rank' first and 'team' last
+// if a column is missing its value will be PHP `null` type
+```
+
 ### includeSection and excludeSection
 
 Tells which section should be parsed based on the `Section` enum
@@ -239,12 +268,23 @@ Tells which section should be parsed based on the `Section` enum
 use Bakame\HtmlTable\Parser;
 use Bakame\HtmlTable\Section;
 
-$parser = Parser::new()->includeSection(Section::thead); // thead is included during parsing
-$parser = Parser::new()->excludeSection(Section::tr);    // table direct tr children are not included during parsing
+$parser = Parser::new()->includeSection(Section::tbody);  // thead and tfoot are included during parsing
+$parser = Parser::new()->excludeSection(Section::tr, Section::tfoot); // table direct tr children and tfoot are not included during parsing
 ```
 
 **By default, the `thead` section is not parse. If a `thead` row is selected to be the header, it will
 be parsed independently of this setting.**
+
+**⚠️Tips:** to be sure of which sections will be modified, first remove all previous setting
+before applying your configuration as shown below:
+
+```diff
+- Parser::new()->includeSection(Section::tbody);
++ Parser::new()->excludeSection(...Section::cases())->includeSection(Section::tbody);
+```
+
+The first call will still include the `tfoot` and the `tr` sections, whereas the second call
+remove any previous setting guaranting that only the `tbody` if present will be parsed.
 
 ### withFormatter and withoutFormatter
 
@@ -266,6 +306,25 @@ function (array $record): array;
 
 If a header was defined or specified, the submitted record will have the header definition set,
 otherwise an array list is provided.
+
+The following formatter will work on any table content as long as it is defined as a string.
+
+```php
+$formatter = fn (array $record): array => array_map(strtolower(...), $record);
+// the following formatter will convert all the fields from your table to lowercase.
+```
+
+The following formatter will only work if the table has a header attached to it with
+a column named `count`.
+
+```php
+$formatter = function (array $record): array {
+   $record['count'] = (int) $record['count'];
+   
+   return $record;
+}
+// the following formatter will convert the data of all count column into integer..
+```
 
 ### ignoreXmlErrors and failOnXmlErrors
 

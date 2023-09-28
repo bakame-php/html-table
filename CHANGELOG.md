@@ -2,11 +2,12 @@
 
 All Notable changes to `bakame/html-table` will be documented in this file.
 
-## [0.3.0](https://github.com/bakame-php/html-table/compare/0.2.0...0.3.0) - 2023-09-27
+## [0.3.0](https://github.com/bakame-php/html-table/compare/0.2.0...0.3.0) - 2023-09-29
 
 ### Added
 
 - `Parser::tableXpathPosition`
+- `Parser::tableCaption`
 - `Table` class which implements the `TabularDataReader` interface.
 - `Parser::includeSections` and `Parser::excludeSections` to improve section parsing.
 
@@ -14,6 +15,7 @@ All Notable changes to `bakame/html-table` will be documented in this file.
 
 - Improve identifier validation for `Parser::tablePosition`
 - Remove the `$tableOffset` property.
+- `tableHeader` can now re-arrange the table column and remove any unwanted column.
 
 ### Deprecated
 

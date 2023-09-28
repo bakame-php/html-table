@@ -27,20 +27,22 @@
   ],
   "require": {
     "ext-dom": "*",
-    "ext-json": "*",
     "ext-libxml": "*",
     "ext-mbstring": "*",
     "ext-simplexml": "*",
     "league/csv": "^9.11.0"
   },
   "require-dev": {
+    "ext-curl": "*",
     "ext-xdebug": "*",
     "friendsofphp/php-cs-fixer": "^v3.28.0",
+    "laravel/prompts": "^0.1.9",
     "phpstan/phpstan": "^1.10.35",
     "phpstan/phpstan-deprecation-rules": "^1.1.4",
     "phpstan/phpstan-phpunit": "^1.3.14",
     "phpstan/phpstan-strict-rules": "^1.5.1",
     "phpunit/phpunit": "^10.3.5",
+    "symfony/css-selector": "^6.3",
     "symfony/var-dumper": "^6.3.4"
   },
   "autoload": {

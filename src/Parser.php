@@ -14,20 +14,15 @@ use DOMXPath;
 use Iterator;
 use League\Csv\ResultSet;
 use League\Csv\SyntaxError;
-use League\Csv\TabularDataReader;
 use SimpleXMLElement;
 use Stringable;
 
-use function array_combine;
 use function array_fill;
 use function array_filter;
 use function array_key_exists;
 use function array_merge;
-use function array_pad;
 use function array_shift;
-use function array_slice;
 use function array_unique;
-use function count;
 use function fclose;
 use function fopen;
 use function in_array;
@@ -52,13 +47,13 @@ final class Parser
      */
     private function __construct(
         private readonly string $tableExpression,
+        private readonly ?string $caption,
         private readonly array $tableHeader,
         private readonly bool $ignoreTableHeader,
         private readonly string $tableHeaderExpression,
-        private readonly bool $throwOnXmlErrors,
         private readonly array $includedSections,
         private readonly ?Closure $formatter,
-        private readonly ?string $caption,
+        private readonly bool $throwOnXmlErrors,
     ) {
     }
 
@@ -66,13 +61,13 @@ final class Parser
     {
         return new self(
             '(//table)[1]',
+            null,
             [],
             false,
             '(//table/thead/tr)[1]',
-            false,
             [Section::tbody->value => 1, Section::tr->value => 1, Section::tfoot->value => 1],
             null,
-            null,
+            false,
         );
     }
 
@@ -84,13 +79,13 @@ final class Parser
             false === (new DOMXPath(new DOMDocument()))->query($expression) => throw new ParserError('The xpath expression `'.$expression.'` is invalie.'),
             default => new self(
                 $expression,
+                $this->caption,
                 $this->tableHeader,
                 $this->ignoreTableHeader,
                 $this->tableHeaderExpression,
-                $this->throwOnXmlErrors,
                 $this->includedSections,
                 $this->formatter,
-                $this->caption,
+                $this->throwOnXmlErrors,
             ),
         };
         restore_error_handler();
@@ -126,13 +121,13 @@ final class Parser
             $headerRow !== array_unique($filteredHeader) => throw ParserError::dueToDuplicateHeaderColumnNames($headerRow),
             default => new self(
                 $this->tableExpression,
+                $this->caption,
                 $headerRow,
                 $this->ignoreTableHeader,
                 $this->tableHeaderExpression,
-                $this->throwOnXmlErrors,
                 $this->includedSections,
                 $this->formatter,
-                $this->caption,
+                $this->throwOnXmlErrors,
             ),
         };
     }
@@ -143,13 +138,13 @@ final class Parser
             true => $this,
             false => new self(
                 $this->tableExpression,
+                $this->caption,
                 $this->tableHeader,
                 true,
                 $this->tableHeaderExpression,
-                $this->throwOnXmlErrors,
                 $this->includedSections,
                 $this->formatter,
-                $this->caption,
+                $this->throwOnXmlErrors,
             ),
         };
     }
@@ -160,13 +155,13 @@ final class Parser
             false => $this,
             true => new self(
                 $this->tableExpression,
+                $this->caption,
                 $this->tableHeader,
                 false,
                 $this->tableHeaderExpression,
-                $this->throwOnXmlErrors,
                 $this->includedSections,
                 $this->formatter,
-                $this->caption,
+                $this->throwOnXmlErrors,
             ),
         };
     }
@@ -182,53 +177,67 @@ final class Parser
             $expression  => $this,
             default => new self(
                 $this->tableExpression,
+                $this->caption,
                 $this->tableHeader,
                 $this->ignoreTableHeader,
                 $expression,
-                $this->throwOnXmlErrors,
                 $this->includedSections,
                 $this->formatter,
-                $this->caption,
+                $this->throwOnXmlErrors,
             ),
         };
     }
 
-    public function includeSection(Section $section): self
+    public function includeSection(Section ...$sections): self
     {
-        $includedSections = $this->includedSections;
-        $includedSections[$section->value] = 1;
+        $includedSections = array_reduce(
+            $sections,
+            function (array $carry, Section $section) {
+                $carry[$section->value] = 1;
+
+                return $carry;
+            },
+            $this->includedSections
+        );
 
         return match ($this->includedSections) {
             $includedSections => $this,
             default => new self(
                 $this->tableExpression,
+                $this->caption,
                 $this->tableHeader,
                 $this->ignoreTableHeader,
                 $this->tableHeaderExpression,
-                $this->throwOnXmlErrors,
                 $includedSections,
                 $this->formatter,
-                $this->caption,
+                $this->throwOnXmlErrors,
             ),
         };
     }
 
-    public function excludeSection(Section $section): self
+    public function excludeSection(Section ...$sections): self
     {
-        $includedSections = $this->includedSections;
-        unset($includedSections[$section->value]);
+        $includedSections = array_reduce(
+            $sections,
+            function (array $carry, Section $section) {
+                unset($carry[$section->value]);
+
+                return $carry;
+            },
+            $this->includedSections
+        );
 
         return match ($this->includedSections) {
             $includedSections => $this,
             default => new self(
                 $this->tableExpression,
+                $this->caption,
                 $this->tableHeader,
                 $this->ignoreTableHeader,
                 $this->tableHeaderExpression,
-                $this->throwOnXmlErrors,
                 $includedSections,
                 $this->formatter,
-                $this->caption,
+                $this->throwOnXmlErrors,
             ),
         };
     }
@@ -239,13 +248,13 @@ final class Parser
             true => $this,
             false => new self(
                 $this->tableExpression,
+                $this->caption,
                 $this->tableHeader,
                 $this->ignoreTableHeader,
                 $this->tableHeaderExpression,
-                true,
                 $this->includedSections,
                 $this->formatter,
-                $this->caption,
+                true,
             ),
         };
     }
@@ -256,13 +265,13 @@ final class Parser
             false => $this,
             true => new self(
                 $this->tableExpression,
+                $this->caption,
                 $this->tableHeader,
                 $this->ignoreTableHeader,
                 $this->tableHeaderExpression,
-                false,
                 $this->includedSections,
                 $this->formatter,
-                $this->caption,
+                false,
             ),
         };
     }
@@ -271,13 +280,13 @@ final class Parser
     {
         return new self(
             $this->tableExpression,
+            $this->caption,
             $this->tableHeader,
             $this->ignoreTableHeader,
             $this->tableHeaderExpression,
-            $this->throwOnXmlErrors,
             $this->includedSections,
             $formatter,
-            $this->caption,
+            $this->throwOnXmlErrors,
         );
     }
 
@@ -287,30 +296,30 @@ final class Parser
             $this->formatter => $this,
             default => new self(
                 $this->tableExpression,
+                $this->caption,
                 $this->tableHeader,
                 $this->ignoreTableHeader,
                 $this->tableHeaderExpression,
-                $this->throwOnXmlErrors,
                 $this->includedSections,
                 null,
-                $this->caption,
+                $this->throwOnXmlErrors,
             ),
         };
     }
 
-    public function tableCaption(?string $caption = null): self
+    public function tableCaption(?string $caption): self
     {
         return match ($this->caption) {
             $caption => $this,
             default => new self(
                 $this->tableExpression,
+                $caption,
                 $this->tableHeader,
                 $this->ignoreTableHeader,
                 $this->tableHeaderExpression,
-                $this->throwOnXmlErrors,
                 $this->includedSections,
                 $this->formatter,
-                $caption,
+                $this->throwOnXmlErrors,
             ),
         };
     }
@@ -322,7 +331,7 @@ final class Parser
      * @throws ParserError
      * @throws SyntaxError
      */
-    public function parseFile(mixed $filenameOrStream, $filenameContext = null): TabularDataReader
+    public function parseFile(mixed $filenameOrStream, $filenameContext = null): Table
     {
         if (is_resource($filenameOrStream)) {
             return $this->parseHtml($this->streamToString($filenameOrStream));
@@ -374,7 +383,7 @@ final class Parser
         $result = $xpath->query('(//caption)[1]');
         $caption = $result->item(0)?->nodeValue ?? $this->caption;
 
-        return new Table(new ResultSet($this->extractTableContents($xpath, $header), $header), $caption);
+        return new Table(new ResultSet($this->extractTableContents($xpath, $header), array_values($header)), $caption);
     }
 
     /**
@@ -564,16 +573,30 @@ final class Parser
      */
     private function formatRecord(array $record, array $header): array
     {
-        $cellCount = count($header);
-        $record = match ($cellCount) {
-            0 => $record,
-            count($record) => array_combine($header, $record),
-            default => array_combine($header, array_slice(array_pad($record, $cellCount, ''), 0, $cellCount)),
+        $record = match ([]) {
+            $header => $record,
+            default => $this->combineArray($record, $header),
         };
 
         return match (null) {
             $this->formatter => $record,
             default => ($this->formatter)($record),
         };
+    }
+
+    /**
+     * @param array<string> $record
+     * @param array<string> $header
+     *
+     * @return array<string, string|null>
+     */
+    private function combineArray(array $record, array $header): array
+    {
+        $row = [];
+        foreach ($header as $offset => $value) {
+            $row[$value] = $record[$offset] ?? null;
+        }
+
+        return $row;
     }
 }

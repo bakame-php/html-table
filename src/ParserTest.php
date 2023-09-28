@@ -47,14 +47,12 @@ TABLE;
             $parser
                 ->tablePosition(0)
                 ->tableHeaderPosition(Section::thead, 0)
-                ->includeSection(Section::tbody)
-                ->includeSection(Section::tfoot)
-                ->includeSection(Section::tr)
+                ->includeSection(Section::tbody, Section::tfoot, Section::tr)
                 ->tableHeader([])
                 ->resolveTableHeader()
                 ->ignoreXmlErrors()
                 ->withoutFormatter()
-                ->tableCaption()
+                ->tableCaption(null)
         );
     }
 
@@ -286,6 +284,47 @@ TABLE;
         ], $table->first());
     }
 
+
+    #[Test]
+    public function it_will_rearrange_the_content_with_table_header(): void
+    {
+        $html = <<<TABLE
+<table class="table-csv-data" id="testb">
+<tfoot>
+<tr data-record-offset="5"><td title="prenoms">Abel</td><td title="nombre">14</td><td title="sexe">M</td><td title="annee">2004</td></tr>
+<tr data-record-offset="6"><td title="prenoms">Abiga</td><td title="nombre">6</td><td title="sexe">F</td><td title="annee">2004</td></tr>
+<tr data-record-offset="7"><td title="prenoms">Aboubacar</td><td title="nombre">8</td><td title="sexe">M</td><td title="annee">2004</td></tr>
+<tr data-record-offset="8"><td title="prenoms">Aboubakar</td><td title="nombre">6</td><td title="sexe">M</td><td title="annee">2004</td></tr>
+</tfoot>
+</table>
+TABLE;
+
+        $header = [3 => 'Annee', 2 => 'Sexe', 0 => 'Firstname', 1 => 'Count'];
+        $table = Parser::new()
+            ->tableHeader($header)
+            ->parseHtml($html);
+
+        self::assertSame($table->getHeader(), array_values($header));
+        self::assertSame([
+            'Annee' => '2004',
+            'Sexe' => 'M',
+            'Firstname' => 'Abel',
+            'Count' => '14',
+        ], $table->first());
+
+        $header = [3 => 'Annee', 0 => 'Firstname', 1 => 'Count'];
+        $table = Parser::new()
+            ->tableHeader($header)
+            ->parseHtml($html);
+
+        self::assertSame($table->getHeader(), array_values($header));
+        self::assertSame([
+            'Annee' => '2004',
+            'Firstname' => 'Abel',
+            'Count' => '14',
+        ], $table->first());
+    }
+
     #[Test]
     public function it_will_duplicate_colspan_data(): void
     {
@@ -390,7 +429,6 @@ TABLE;
 
         self::assertSame([], $table->getHeader());
     }
-
 
     #[Test]
     public function it_will_use_the_table_footer(): void
