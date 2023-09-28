@@ -94,15 +94,15 @@ $parser = Parser::new()->tableXPathPosition("//main/div/table");
 `Parser::tableXpathPosition` and `Parser::tablePosition` override each other. It is 
 recommended to use one or the other but not both at the same time.
 
-### defaultCaption
+### tableCaption
 
-You can optionnally define a caption for your table if none is present of found during parsing.
+You can optionnally define a caption for your table if none is present or found during parsing.
 
 ```php
 use Bakame\HtmlTable\Parser;
 
-$parser = Parser::new()->defaultCaption('this is a generated caption');
-$parser = Parser::new()->defaultCaption(null);  // reset the default caption to null
+$parser = Parser::new()->tableCaption('this is a generated caption');
+$parser = Parser::new()->tableCaption(null);  // remove any default caption set
 ```
 
 ### ignoreTableHeader and resolveTableHeader
@@ -112,8 +112,8 @@ Tells the parser to attempt or not table header resolution.
 ```php
 use Bakame\HtmlTable\Parser;
 
-$parser = Parser::new()->ignoreTableHeader();   // no header table will be calculated
-$parser = Parser::new()->resolveTableHeader(3); // will attempt to resolve the table header
+$parser = Parser::new()->ignoreTableHeader();  // no table header will be resolved
+$parser = Parser::new()->resolveTableHeader(); // will attempt to resolve the table header
 ```
 
 ### tableHeaderPosition
@@ -124,7 +124,8 @@ Tells where to locate and resolve the table header
 use Bakame\HtmlTable\Parser;
 use Bakame\HtmlTable\Section;
 
-$parser = Parser::new()->tableHeaderPosition(Section::thead, 3); // no header table will be calculated
+$parser = Parser::new()->tableHeaderPosition(Section::thead, 3);
+// header is the 4th row in the <thead> table section
 ```
 
 use the `Bakame\HtmlTable\Section` enum to designate which table section to use to resolve the header
@@ -137,11 +138,11 @@ enum Section
     case thead;
     case tbody;
     case tfoot;
-    case none;
+    case tr;
 }
 ```
 
-If `Section::none` is used, `tr` tags will be used independently of their section.
+If `Section::tr` is used, `tr` tags will be used independently of their section.
 The second argument is the table header offset; it defaults to `0` (ie: the first row).
 
 ### tableHeader
@@ -153,20 +154,23 @@ related configuration with this one
 use Bakame\HtmlTable\Parser;
 use Bakame\HtmlTable\Section;
 
-$parser = Parser::new()->tableHeader(['rank', 'team', 'winner']); // no header table will be calculated
+$parser = Parser::new()->tableHeader(['rank', 'team', 'winner']);
 ```
 
-**If you specify a non empty array as the table header, it will take precedence over any other table header related options.**
+**If you specify a non-empty array as the table header, it will take precedence over any other table header related options.**
 
-### includeTableFooter and excludeTableFooter
+**Because its a tabular data each cell MUST be unique otherwise an exception will be thrown**
 
-Tells whether the footer should be included when parsing the table content.
+### includSection and excludeSection
+
+Tells which section should be parsed based on the `Section` enum
 
 ```php
 use Bakame\HtmlTable\Parser;
+use Bakame\HtmlTable\Section;
 
-$parser = Parser::new()->includeTableFooter();   // tfoot is included during parsing
-$parser = Parser::new()->excludeTableFooter(3); // tfoot is excluded during parsing
+$parser = Parser::new()->includeSection(Section::tfoot); // tfoot is included during parsing
+$parser = Parser::new()->excludeSection(Section::tr);    // table direct tr children are not included during parsing
 ```
 
 ### ignoreXmlErrors and failOnXmlErrors
@@ -203,13 +207,14 @@ otherwise an array list is provided.
 
 ### Default behaviour
 
-By default, when calling the `Parser::new()` named constructor you will:
+By default, when calling the `Parser::new()` named constructor the parser will:
 
 - try to parse the first table found in the page
 - expect the table header row to be the first `tr` found in the `thead` section of your table
-- include the table `tfoot` section
+- exclude the table `thead` section when extracting the table content.
 - ignore XML errors.
-- no formatter is attached to the parser.
+- have no formatter attached.
+- have no default caption to used.
 
 ###  parseHtml and parseFile
 

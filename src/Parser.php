@@ -48,6 +48,7 @@ final class Parser
 
     /**
      * @param array<string> $tableHeader
+     * @param array<string, int> $includedSections
      */
     private function __construct(
         private readonly string $expression,
@@ -56,7 +57,7 @@ final class Parser
         private readonly Section $tableHeaderSection,
         private readonly int $tableHeaderOffset,
         private readonly bool $throwOnXmlErrors,
-        private readonly bool $includeTableFooter,
+        private readonly array $includedSections,
         private readonly ?Closure $formatter,
         private readonly ?string $caption,
     ) {
@@ -71,7 +72,7 @@ final class Parser
             Section::thead,
             0,
             false,
-            true,
+            [Section::tbody->value => 1, Section::tr->value => 1, Section::tfoot->value => 1],
             null,
             null,
         );
@@ -90,7 +91,7 @@ final class Parser
                 $this->tableHeaderSection,
                 $this->tableHeaderOffset,
                 $this->throwOnXmlErrors,
-                $this->includeTableFooter,
+                $this->includedSections,
                 $this->formatter,
                 $this->caption,
             ),
@@ -133,7 +134,7 @@ final class Parser
                 $this->tableHeaderSection,
                 $this->tableHeaderOffset,
                 $this->throwOnXmlErrors,
-                $this->includeTableFooter,
+                $this->includedSections,
                 $this->formatter,
                 $this->caption,
             ),
@@ -151,7 +152,7 @@ final class Parser
                 $this->tableHeaderSection,
                 $this->tableHeaderOffset,
                 $this->throwOnXmlErrors,
-                $this->includeTableFooter,
+                $this->includedSections,
                 $this->formatter,
                 $this->caption,
             ),
@@ -169,7 +170,7 @@ final class Parser
                 $this->tableHeaderSection,
                 $this->tableHeaderOffset,
                 $this->throwOnXmlErrors,
-                $this->includeTableFooter,
+                $this->includedSections,
                 $this->formatter,
                 $this->caption,
             ),
@@ -191,43 +192,49 @@ final class Parser
                 $section,
                 $offset,
                 $this->throwOnXmlErrors,
-                $this->includeTableFooter,
+                $this->includedSections,
                 $this->formatter,
                 $this->caption,
             ),
         };
     }
 
-    public function includeTableFooter(): self
+    public function includeSection(Section $section): self
     {
-        return match ($this->includeTableFooter) {
-            true => $this,
-            false => new self(
+        $includedSections = $this->includedSections;
+        $includedSections[$section->value] = 1;
+
+        return match ($this->includedSections) {
+            $includedSections => $this,
+            default => new self(
                 $this->expression,
                 $this->tableHeader,
                 $this->ignoreTableHeader,
                 $this->tableHeaderSection,
                 $this->tableHeaderOffset,
                 $this->throwOnXmlErrors,
-                true,
+                $includedSections,
                 $this->formatter,
                 $this->caption,
             ),
         };
     }
 
-    public function excludeTableFooter(): self
+    public function excludeSection(Section $section): self
     {
-        return match ($this->includeTableFooter) {
-            false => $this,
-            true => new self(
+        $includedSections = $this->includedSections;
+        unset($includedSections[$section->value]);
+
+        return match ($this->includedSections) {
+            $includedSections => $this,
+            default => new self(
                 $this->expression,
                 $this->tableHeader,
                 $this->ignoreTableHeader,
                 $this->tableHeaderSection,
                 $this->tableHeaderOffset,
                 $this->throwOnXmlErrors,
-                false,
+                $includedSections,
                 $this->formatter,
                 $this->caption,
             ),
@@ -245,7 +252,7 @@ final class Parser
                 $this->tableHeaderSection,
                 $this->tableHeaderOffset,
                 true,
-                $this->includeTableFooter,
+                $this->includedSections,
                 $this->formatter,
                 $this->caption,
             ),
@@ -263,7 +270,7 @@ final class Parser
                 $this->tableHeaderSection,
                 $this->tableHeaderOffset,
                 false,
-                $this->includeTableFooter,
+                $this->includedSections,
                 $this->formatter,
                 $this->caption,
             ),
@@ -279,7 +286,7 @@ final class Parser
             $this->tableHeaderSection,
             $this->tableHeaderOffset,
             $this->throwOnXmlErrors,
-            $this->includeTableFooter,
+            $this->includedSections,
             $formatter,
             $this->caption,
         );
@@ -296,14 +303,14 @@ final class Parser
                 $this->tableHeaderSection,
                 $this->tableHeaderOffset,
                 $this->throwOnXmlErrors,
-                $this->includeTableFooter,
+                $this->includedSections,
                 null,
                 $this->caption,
             ),
         };
     }
 
-    public function defaultCaption(?string $caption = null): self
+    public function tableCaption(?string $caption = null): self
     {
         return match ($this->caption) {
             $caption => $this,
@@ -314,7 +321,7 @@ final class Parser
                 $this->tableHeaderSection,
                 $this->tableHeaderOffset,
                 $this->throwOnXmlErrors,
-                $this->includeTableFooter,
+                $this->includedSections,
                 $this->formatter,
                 $caption,
             ),
@@ -458,7 +465,7 @@ final class Parser
         $query = $xpath->query('//table');
         /** @var DOMElement $table */
         $table = $query->item(0);
-        $it = new ArrayIterator();
+        $iterator = new ArrayIterator();
         $header =  $this->tableHeader($header)->tableHeader;
         $rowSpan = [];
         foreach ($table->childNodes as $childNode) {
@@ -466,20 +473,30 @@ final class Parser
                 continue;
             }
 
-            $nodeName = strtolower($childNode->nodeName);
-            if ('tbody' === $nodeName || ('tfoot' === $nodeName && $this->includeTableFooter)) {
-                $rowSpanSection = [];
-                foreach ($childNode->childNodes as $tr) {
-                    if (null !== ($record = $this->filterRecord($tr))) {
-                        $it->append($this->formatRecord($this->extractRecord($record, $rowSpanSection), $header));
-                    }
+            $section = Section::tryFrom(strtolower($childNode->nodeName));
+            if (!$this->isIncludedSection($section)) {
+                continue;
+            }
+
+            if (Section::tr === $section && null !== ($record = $this->filterRecord($childNode))) {
+                $iterator->append($this->formatRecord($this->extractRecord($record, $rowSpan), $header));
+                continue;
+            }
+
+            $rowSpanSection = [];
+            foreach ($childNode->childNodes as $tr) {
+                if (null !== ($record = $this->filterRecord($tr))) {
+                    $iterator->append($this->formatRecord($this->extractRecord($record, $rowSpanSection), $header));
                 }
-            } elseif (null !== ($record = $this->filterRecord($childNode))) {
-                $it->append($this->formatRecord($this->extractRecord($record, $rowSpan), $header));
             }
         }
 
-        return $it;
+        return $iterator;
+    }
+
+    private function isIncludedSection(?Section $nodeName): bool
+    {
+        return array_key_exists($nodeName?->value ?? '', $this->includedSections);
     }
 
     private function filterRecord(DOMNode $tr): ?DOMElement

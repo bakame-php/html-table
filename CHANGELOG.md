@@ -8,6 +8,7 @@ All Notable changes to `bakame/html-table` will be documented in this file.
 
 - `Parser::tableXpathPosition`
 - `Table` class which implements the `TabularDataReader` interface.
+- `Parser::includeSections` and `Parser::excludeSections` to improve section parsing.
 
 ### Fixed
 
@@ -20,7 +21,7 @@ All Notable changes to `bakame/html-table` will be documented in this file.
 
 ### Removed
 
-- None
+- `Parser::(in|ex)cludeTableFooter` replaced by `Parser::(in|ex)cludeSections`
 
 ## [0.2.0](https://github.com/bakame-php/html-table/compare/0.1.0...0.2.0) - 2023-09-26
 

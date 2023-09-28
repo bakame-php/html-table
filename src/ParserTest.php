@@ -47,12 +47,14 @@ TABLE;
             $parser
                 ->tablePosition(0)
                 ->tableHeaderPosition(Section::thead, 0)
-                ->includeTableFooter()
+                ->includeSection(Section::tbody)
+                ->includeSection(Section::tfoot)
+                ->includeSection(Section::tr)
                 ->tableHeader([])
                 ->resolveTableHeader()
                 ->ignoreXmlErrors()
                 ->withoutFormatter()
-                ->defaultCaption()
+                ->tableCaption()
         );
     }
 
@@ -137,15 +139,21 @@ HTML;
     public function it_can_load_the_first_html_table_found_by_default(): void
     {
         $table = Parser::new()->parseHtml(self::HTML);
-
-        self::assertSame(['prenoms', 'nombre', 'sexe', 'annee'], $table->getHeader());
-        self::assertCount(4, $table);
-        self::assertSame($table->first(), [
+        $header = ['prenoms', 'nombre', 'sexe', 'annee'];
+        $row = [
             'prenoms' => 'Abdoulaye',
             'nombre' => '15',
             'sexe' => 'M',
             'annee' => '2004',
-        ]);
+        ];
+
+        self::assertSame(['prenoms', 'nombre', 'sexe', 'annee'], $table->getHeader());
+        self::assertCount(4, $table);
+        self::assertSame($row, $table->first());
+
+        $sliced = $table->slice(0, 1);
+        self::assertInstanceOf(Table::class, $sliced);
+        self::assertSame(['caption' => null, 'header' => $header, 'rows' => [$row]], $sliced->jsonSerialize());
     }
 
     #[Test]
@@ -155,12 +163,12 @@ HTML;
 
         self::assertSame([], $table->getHeader());
         self::assertCount(4, $table);
-        self::assertSame($table->first(), [
+        self::assertSame([
             'Abdoulaye',
             '15',
             'M',
             '2004',
-        ]);
+        ], $table->first());
     }
 
     #[Test]
@@ -192,7 +200,7 @@ HTML;
         $stream = fopen(dirname(__DIR__).'/test_files/table.html', 'r');
         $table = Parser::new()
             ->tablePosition('testb')
-            ->tableHeaderPosition(Section::none)
+            ->tableHeaderPosition(Section::tr)
             ->parseFile($stream);
 
         self::assertSame(['prenoms', 'nombre', 'sexe', 'annee'], $table->getHeader());
@@ -270,12 +278,12 @@ TABLE;
         $table = $parser->parseHtml(self::HTML);
 
         self::assertSame(['firstname', 'count', 'gender', 'year'], $table->getHeader());
-        self::assertSame($table->first(), [
+        self::assertSame([
             'firstname' => 'Abdoulaye',
             'count' => '15',
             'gender' => 'M',
             'year' => '2004',
-        ]);
+        ], $table->first());
     }
 
     #[Test]
@@ -377,7 +385,7 @@ TABLE;
 TABLE;
 
         $table = Parser::new()
-            ->tableHeaderPosition(Section::none)
+            ->tableHeaderPosition(Section::tr)
             ->parseHtml($html);
 
         self::assertSame([], $table->getHeader());
@@ -400,7 +408,7 @@ TABLE;
 TABLE;
 
         $table = Parser::new()
-            ->excludeTableFooter()
+            ->excludeSection(Section::tfoot)
             ->parseHtml($html);
 
         self::assertSame([], $table->getHeader());
@@ -414,7 +422,7 @@ TABLE;
         $stream = fopen(dirname(__DIR__).'/test_files/table.html', 'r');
         $table = Parser::new()
             ->tablePosition('testb')
-            ->tableHeaderPosition(Section::none)
+            ->tableHeaderPosition(Section::tr)
             ->withFormatter(function (array $record): array {
                 $record = array_map(strtoupper(...), $record);
                 $record['nombre'] = (int) $record['nombre'];
@@ -498,7 +506,7 @@ TABLE;
     #[DataProvider('providesCaption')]
     public function it_can_load_the_table_caption(string $table, ?string $defaultCaption, ?string $expected): void
     {
-        self::assertSame($expected, Parser::new()->defaultCaption($defaultCaption)->parseHtml($table)->getCaption());
+        self::assertSame($expected, Parser::new()->tableCaption($defaultCaption)->parseHtml($table)->getCaption());
     }
 
     /**

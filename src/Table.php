@@ -6,9 +6,10 @@ namespace Bakame\HtmlTable;
 
 use Closure;
 use Iterator;
+use JsonSerializable;
 use League\Csv\TabularDataReader;
 
-final class Table implements TabularDataReader
+final class Table implements TabularDataReader, JsonSerializable
 {
     public function __construct(
         private readonly TabularDataReader $tabularDataReader,
@@ -24,6 +25,18 @@ final class Table implements TabularDataReader
     public function getIterator(): Iterator
     {
         return $this->tabularDataReader->getIterator();
+    }
+
+    /**
+     * @return array{caption: ?string, header: array<string>, rows:array<array<string|null>>}
+     */
+    public function jsonSerialize(): array
+    {
+        return [
+            'caption' => $this->caption,
+            'header' => $this->getHeader(),
+            'rows' => array_values([...$this->tabularDataReader]),
+        ];
     }
 
     public function each(Closure $closure): bool
