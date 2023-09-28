@@ -51,11 +51,10 @@ final class Parser
      * @param array<string, int> $includedSections
      */
     private function __construct(
-        private readonly string $expression,
+        private readonly string $tableExpression,
         private readonly array $tableHeader,
         private readonly bool $ignoreTableHeader,
-        private readonly Section $tableHeaderSection,
-        private readonly int $tableHeaderOffset,
+        private readonly string $tableHeaderExpression,
         private readonly bool $throwOnXmlErrors,
         private readonly array $includedSections,
         private readonly ?Closure $formatter,
@@ -69,8 +68,7 @@ final class Parser
             '(//table)[1]',
             [],
             false,
-            Section::thead,
-            0,
+            '(//table/thead/tr)[1]',
             false,
             [Section::tbody->value => 1, Section::tr->value => 1, Section::tfoot->value => 1],
             null,
@@ -82,14 +80,13 @@ final class Parser
     {
         set_error_handler(fn (int $errno, string $errstr, string $errfile, int $errline) => true);
         $newInstace = match (true) {
-            $expression === $this->expression => $this,
+            $expression === $this->tableExpression => $this,
             false === (new DOMXPath(new DOMDocument()))->query($expression) => throw new ParserError('The xpath expression `'.$expression.'` is invalie.'),
             default => new self(
                 $expression,
                 $this->tableHeader,
                 $this->ignoreTableHeader,
-                $this->tableHeaderSection,
-                $this->tableHeaderOffset,
+                $this->tableHeaderExpression,
                 $this->throwOnXmlErrors,
                 $this->includedSections,
                 $this->formatter,
@@ -128,11 +125,10 @@ final class Parser
             $headerRow !== ($filteredHeader = array_filter($headerRow, is_string(...))) => throw new ParserError('The header record contains non string colum names.'),
             $headerRow !== array_unique($filteredHeader) => throw ParserError::dueToDuplicateHeaderColumnNames($headerRow),
             default => new self(
-                $this->expression,
+                $this->tableExpression,
                 $headerRow,
                 $this->ignoreTableHeader,
-                $this->tableHeaderSection,
-                $this->tableHeaderOffset,
+                $this->tableHeaderExpression,
                 $this->throwOnXmlErrors,
                 $this->includedSections,
                 $this->formatter,
@@ -146,11 +142,10 @@ final class Parser
         return match ($this->ignoreTableHeader) {
             true => $this,
             false => new self(
-                $this->expression,
+                $this->tableExpression,
                 $this->tableHeader,
                 true,
-                $this->tableHeaderSection,
-                $this->tableHeaderOffset,
+                $this->tableHeaderExpression,
                 $this->throwOnXmlErrors,
                 $this->includedSections,
                 $this->formatter,
@@ -164,11 +159,10 @@ final class Parser
         return match ($this->ignoreTableHeader) {
             false => $this,
             true => new self(
-                $this->expression,
+                $this->tableExpression,
                 $this->tableHeader,
                 false,
-                $this->tableHeaderSection,
-                $this->tableHeaderOffset,
+                $this->tableHeaderExpression,
                 $this->throwOnXmlErrors,
                 $this->includedSections,
                 $this->formatter,
@@ -182,15 +176,15 @@ final class Parser
      */
     public function tableHeaderPosition(Section $section, int $offset = 0): self
     {
-        return match (true) {
-            $section === $this->tableHeaderSection && $offset === $this->tableHeaderOffset => $this,
-            $offset < 0 => throw new ParserError('The table header row offset must be a positive integer or 0.'), /* @phpstan-ignore-line */
+        $expression = $section->xpathRow($offset);
+
+        return match ($this->tableHeaderExpression) {
+            $expression  => $this,
             default => new self(
-                $this->expression,
+                $this->tableExpression,
                 $this->tableHeader,
                 $this->ignoreTableHeader,
-                $section,
-                $offset,
+                $expression,
                 $this->throwOnXmlErrors,
                 $this->includedSections,
                 $this->formatter,
@@ -207,11 +201,10 @@ final class Parser
         return match ($this->includedSections) {
             $includedSections => $this,
             default => new self(
-                $this->expression,
+                $this->tableExpression,
                 $this->tableHeader,
                 $this->ignoreTableHeader,
-                $this->tableHeaderSection,
-                $this->tableHeaderOffset,
+                $this->tableHeaderExpression,
                 $this->throwOnXmlErrors,
                 $includedSections,
                 $this->formatter,
@@ -228,11 +221,10 @@ final class Parser
         return match ($this->includedSections) {
             $includedSections => $this,
             default => new self(
-                $this->expression,
+                $this->tableExpression,
                 $this->tableHeader,
                 $this->ignoreTableHeader,
-                $this->tableHeaderSection,
-                $this->tableHeaderOffset,
+                $this->tableHeaderExpression,
                 $this->throwOnXmlErrors,
                 $includedSections,
                 $this->formatter,
@@ -246,11 +238,10 @@ final class Parser
         return match ($this->throwOnXmlErrors) {
             true => $this,
             false => new self(
-                $this->expression,
+                $this->tableExpression,
                 $this->tableHeader,
                 $this->ignoreTableHeader,
-                $this->tableHeaderSection,
-                $this->tableHeaderOffset,
+                $this->tableHeaderExpression,
                 true,
                 $this->includedSections,
                 $this->formatter,
@@ -264,11 +255,10 @@ final class Parser
         return match ($this->throwOnXmlErrors) {
             false => $this,
             true => new self(
-                $this->expression,
+                $this->tableExpression,
                 $this->tableHeader,
                 $this->ignoreTableHeader,
-                $this->tableHeaderSection,
-                $this->tableHeaderOffset,
+                $this->tableHeaderExpression,
                 false,
                 $this->includedSections,
                 $this->formatter,
@@ -280,11 +270,10 @@ final class Parser
     public function withFormatter(Closure $formatter): self
     {
         return new self(
-            $this->expression,
+            $this->tableExpression,
             $this->tableHeader,
             $this->ignoreTableHeader,
-            $this->tableHeaderSection,
-            $this->tableHeaderOffset,
+            $this->tableHeaderExpression,
             $this->throwOnXmlErrors,
             $this->includedSections,
             $formatter,
@@ -297,11 +286,10 @@ final class Parser
         return match (null) {
             $this->formatter => $this,
             default => new self(
-                $this->expression,
+                $this->tableExpression,
                 $this->tableHeader,
                 $this->ignoreTableHeader,
-                $this->tableHeaderSection,
-                $this->tableHeaderOffset,
+                $this->tableHeaderExpression,
                 $this->throwOnXmlErrors,
                 $this->includedSections,
                 null,
@@ -315,11 +303,10 @@ final class Parser
         return match ($this->caption) {
             $caption => $this,
             default => new self(
-                $this->expression,
+                $this->tableExpression,
                 $this->tableHeader,
                 $this->ignoreTableHeader,
-                $this->tableHeaderSection,
-                $this->tableHeaderOffset,
+                $this->tableHeaderExpression,
                 $this->throwOnXmlErrors,
                 $this->includedSections,
                 $this->formatter,
@@ -365,7 +352,7 @@ final class Parser
     public function parseHtml(DOMDocument|DOMElement|SimpleXMLElement|Stringable|string $source): Table
     {
         /** @var DOMNodeList<DOMElement> $query */
-        $query = (new DOMXPath($this->sourceToDomDocument($source)))->query($this->expression);
+        $query = (new DOMXPath($this->sourceToDomDocument($source)))->query($this->tableExpression);
         $table = $query->item(0);
         if (!$table instanceof DOMElement) {
             throw new ParserError('The HTML table could not be found in the submitted html.');
@@ -446,9 +433,9 @@ final class Parser
     private function extractTableHeader(DOMXPath $xpath): array
     {
         /** @var DOMNodeList<DOMElement> $query */
-        $query = $xpath->query($this->tableHeaderSection->xpath());
+        $query = $xpath->query($this->tableHeaderExpression);
         /** @var DOMElement|null $tr */
-        $tr = $query->item($this->tableHeaderOffset);
+        $tr = $query->item(0);
 
         return match (null) {
             $tr => [],

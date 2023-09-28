@@ -11,11 +11,19 @@ enum Section: string
     case tfoot = 'tfoot';
     case tr = 'tr';
 
-    public function xpath(): string
+    /**
+     * @param int<0, max> $offset
+     */
+    public function xpathRow(int $offset = 0): string
     {
+        if ($offset < 0) { /* @phpstan-ignore-line */
+            throw new ParserError('The table header row offset must be a positive integer or 0.');
+        }
+
+        ++$offset;
         return match ($this) {
-            self::tr => '//table/tr',
-            default => '//table/'.$this->name.'/tr',
+            self::tr => '(//table/tr)['.$offset.']',
+            default => '(//table/'.$this->name.'/tr)['.$offset.']',
         };
     }
 }
