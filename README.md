@@ -56,7 +56,7 @@ or an HTML document into a `League\Csv\TabularData` implementing object. Once co
 can use all the methods and feature made available by this interface
 (see [ResultSet](https://csv.thephpleague.com/9.0/reader/resultset/)) for more information.
 
-The `Parser` is immutable, whenever you change a configuration a new instance is returned.
+**The `Parser` itself is immutable, whenever you change a configuration option a new instance is returned.**
 
 ```php
 use Bakame\HtmlTable\Parser;
@@ -67,7 +67,77 @@ $table = $parser->parseHtml('<table>...</table>');
 $table = $parser->parseFile('path/to/html/file.html');
 ```
 
-It is possible to configure the parser to improve HTML table resolution:
+### parseHtml and parseFile
+
+The `parseHtml` or `parseFile` methods extract and parse your table. If parsing
+is not possible a `ParseError` exception will be thrown.
+
+`parseHtml` parses an HTML page represented by:
+
+- a `string`,
+- a `Stringable` object,
+- a `DOMDocument`,
+- a `DOMElement`,
+- and/or a `SimpleXMLElement`
+
+whereas `parseFile` works with a filepath and/or a PHP readable stream.
+
+Both methods return a `Table` instance which implements the `League\Csv\TabularDataReader`
+interface and also give access to the table caption if present via the `getCaption` method.
+
+```php
+use Bakame\HtmlTable\Parser;
+
+$html = <<<HTML
+<div>
+<table>
+    <caption>Songs</caption>
+    <thead>
+        <tr>
+            <th>Title</th>
+            <th>Singer</th>
+            <th>Country</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Nakei Nairobi</td>
+            <td>Mbilia Bel</td>
+            <td rowspan="3">DR Congo</td>
+        </tr>
+        <tr>
+            <td>Muvaro</td>
+            <td>Zaiko Langa Langa</td>
+        </tr>
+        <tr>
+            <td>Nzinzi</td>
+            <td>Emeneya</td>
+        </tr>
+    </tbody>
+</table>
+</div>
+HTML;
+
+$table = Parser::new()->parseHtml($html);
+$table->getCaption(); //returns 'Songs'
+$table->getHeader();  //returns ['Title','Singer', 'Country']
+$table->nth(2); //returns ["Title" => "Nzinzi", "Singer" => "Emeneya", "Country" => "DR Congo"]
+json_encode($table->slice(0, 1));
+//{"caption":"Songs","header":["Title","Singer","Country"],"rows":[{"Title":"Nakei Nairobi","Singer":"Mbilia Bel","Country":"DR Congo"}]}
+```
+
+#### Default configuration
+
+By default, when calling the `Parser::new()` named constructor the parser will:
+
+- try to parse the first table found in the page
+- expect the table header row to be the first `tr` found in the `thead` section of your table
+- exclude the table `thead` section when extracting the table content.
+- ignore XML errors.
+- have no formatter attached.
+- have no default caption to used if none is present in the table.
+
+Each of the following settings can be changed to improve HTML to object conversion for your specific needs:
 
 ### tablePosition and tableXpathPosition
 
@@ -159,9 +229,9 @@ $parser = Parser::new()->tableHeader(['rank', 'team', 'winner']);
 
 **If you specify a non-empty array as the table header, it will take precedence over any other table header related options.**
 
-**Because its a tabular data each cell MUST be unique otherwise an exception will be thrown**
+**Because it is a tabular data each cell MUST be unique otherwise an exception will be thrown**
 
-### includSection and excludeSection
+### includeSection and excludeSection
 
 Tells which section should be parsed based on the `Section` enum
 
@@ -169,20 +239,12 @@ Tells which section should be parsed based on the `Section` enum
 use Bakame\HtmlTable\Parser;
 use Bakame\HtmlTable\Section;
 
-$parser = Parser::new()->includeSection(Section::tfoot); // tfoot is included during parsing
+$parser = Parser::new()->includeSection(Section::thead); // thead is included during parsing
 $parser = Parser::new()->excludeSection(Section::tr);    // table direct tr children are not included during parsing
 ```
 
-### ignoreXmlErrors and failOnXmlErrors
-
-Tells whether the parser should ignore or throw in case of malformed HTML content.
-
-```php
-use Bakame\HtmlTable\Parser;
-
-$parser = Parser::new()->ignoreXmlErrors();   // ignore the XML errors
-$parser = Parser::new()->failOnXmlErrors(3); // throw on XML errors
-```
+**By default, the `thead` section is not parse. If a `thead` row is selected to be the header, it will
+be parsed independently of this setting.**
 
 ### withFormatter and withoutFormatter
 
@@ -205,58 +267,15 @@ function (array $record): array;
 If a header was defined or specified, the submitted record will have the header definition set,
 otherwise an array list is provided.
 
-### Default behaviour
+### ignoreXmlErrors and failOnXmlErrors
 
-By default, when calling the `Parser::new()` named constructor the parser will:
-
-- try to parse the first table found in the page
-- expect the table header row to be the first `tr` found in the `thead` section of your table
-- exclude the table `thead` section when extracting the table content.
-- ignore XML errors.
-- have no formatter attached.
-- have no default caption to used.
-
-###  parseHtml and parseFile
-
-Once set you can use `parseHtml` or `parseFile` to extract and parse your table. If parsing
-is not possible a `ParseError` exception will be thrown. 
-
-`parseHtml` parses an HTML page represented by:
-
-- a `string`, 
-- a `Stringable` object, 
-- a `DOMDocument`,
-- a `DOMElement`,
-- and/or a `SimpleXMLElement`
-
-whereas `parseFile` works with a filepath and/or a PHP readable stream.
-
-Both methods return a `Table` instance which implements the `League\Csv\TabularDataReader`
-interface and also give access to the table caption if present via the `getCaption` method.
+Tells whether the parser should ignore or throw in case of malformed HTML content.
 
 ```php
 use Bakame\HtmlTable\Parser;
 
-$html = <<<HTML
-<div>
-<table>
-    <caption>Songs</caption>
-    <thead>
-        <tr><th>Title</th><th>Singer</th><th>Country</th></tr>
-    </thead>
-    <tbody>
-        <tr><td>Nakei Nairobi</td><td>Mbilia Bel</td><td rowspan="3">DRC Congo</td></tr>
-        <tr><td>Muvaro</td><td>Zaiko Langa Langa</td></tr>
-        <tr><td>Nzinzi</td><td>Emeneya</td></tr>
-    </tbody>
-</table>
-</div>
-HTML;
-
-$table = Parser::new()->parseHtml($html);
-$table->getCaption(); //returns 'Songs'
-$table->getHeader();  //returns ['Title','Singer', 'Country']
-$table->nth(2); //returns ["Title" => "Nzinzi", "Singer" => "Emeneya", "Country" => "DRC Congo"]
+$parser = Parser::new()->ignoreXmlErrors();   // ignore the XML errors
+$parser = Parser::new()->failOnXmlErrors(3); // throw on XML errors
 ```
 
 ## Testing
