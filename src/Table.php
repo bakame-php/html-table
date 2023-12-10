@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Bakame\HtmlTable;
+namespace Bakame\TabularData\HtmlTable;
 
 use Closure;
 use Iterator;
@@ -28,7 +28,11 @@ final class Table implements TabularDataReader, JsonSerializable
     }
 
     /**
-     * @return array{caption: ?string, header: array<string>, rows:array<array<string|null>>}
+     * @return array{
+     *     caption: ?string,
+     *     header: array<string>,
+     *     rows:array<int, array<mixed>>
+     * }
      */
     public function jsonSerialize(): array
     {
@@ -114,6 +118,14 @@ final class Table implements TabularDataReader, JsonSerializable
     }
 
     /**
+     * @param array<int, string> $header
+     */
+    public function getObjects(string $className, array $header = []): Iterator
+    {
+        return $this->tabularDataReader->getObjects($className, $header);
+    }
+
+    /**
      * @return array<string>
      */
     public function fetchOne(int $nth_record = 0): array
@@ -129,5 +141,31 @@ final class Table implements TabularDataReader, JsonSerializable
     public function fetchColumn($index = 0): Iterator
     {
         return $this->tabularDataReader->fetchColumn($index);
+    }
+
+    public function select(string|int ...$columnOffsetOrName): TabularDataReader
+    {
+        return $this->tabularDataReader->select(...$columnOffsetOrName);
+    }
+
+    /** @return iterable<TabularDataReader> */
+    public function matching(string $expression): iterable
+    {
+        return $this->tabularDataReader->matching($expression);
+    }
+
+    public function matchingFirst(string $expression): ?TabularDataReader
+    {
+        return $this->tabularDataReader->matchingFirst($expression);
+    }
+
+    public function matchingFirstOrFail(string $expression): TabularDataReader
+    {
+        return $this->tabularDataReader->matchingFirstOrFail($expression);
+    }
+
+    public function value(int|string $column = 0): mixed
+    {
+        return $this->tabularDataReader->value($column);
     }
 }

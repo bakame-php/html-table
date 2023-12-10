@@ -2,14 +2,18 @@
 
 declare(strict_types=1);
 
-namespace Bakame\HtmlTable;
+namespace Bakame\TabularData\HtmlTable;
+
+use Bakame\Aide\Enum\Helper;
 
 enum Section: string
 {
-    case thead = 'thead';
-    case tbody = 'tbody';
-    case tfoot = 'tfoot';
-    case tr = 'tr';
+    use Helper;
+
+    case Thead = 'thead';
+    case Tbody = 'tbody';
+    case Tfoot = 'tfoot';
+    case Tr = 'tr';
 
     /**
      * @param int<0, max> $offset
@@ -22,8 +26,8 @@ enum Section: string
 
         ++$offset;
         return match ($this) {
-            self::tr => '(//table/tr)['.$offset.']',
-            default => '(//table/'.$this->name.'/tr)['.$offset.']',
+            self::Tr => '(//table/tr)['.$offset.']',
+            default => '(//table/'.$this->value.'/tr)['.$offset.']',
         };
     }
 }

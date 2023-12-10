@@ -2,9 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Bakame\HtmlTable;
+namespace Bakame\TabularData\HtmlTable;
 
 use ArrayIterator;
+use Bakame\Aide\Error\Cloak;
 use Closure;
 use DOMDocument;
 use DOMElement;
@@ -24,16 +25,12 @@ use function array_merge;
 use function array_shift;
 use function array_unique;
 use function fclose;
-use function fopen;
 use function in_array;
 use function is_resource;
 use function libxml_clear_errors;
 use function libxml_get_errors;
 use function libxml_use_internal_errors;
 use function preg_match;
-use function restore_error_handler;
-use function set_error_handler;
-use function stream_get_contents;
 use function strtolower;
 
 final class Parser
@@ -43,7 +40,7 @@ final class Parser
 
     /**
      * @param array<string> $tableHeader
-     * @param array<string, int> $includedSections
+     * @param array<Section> $includedSections
      */
     private function __construct(
         private readonly string $tableExpression,
@@ -65,7 +62,7 @@ final class Parser
             [],
             false,
             '(//table/thead/tr)[1]',
-            [Section::tbody->value => 1, Section::tr->value => 1, Section::tfoot->value => 1],
+            [Section::Tbody, Section::Tfoot, Section::Tr],
             null,
             false,
         );
@@ -73,10 +70,15 @@ final class Parser
 
     public function tableXPathPosition(string $expression): self
     {
-        set_error_handler(fn (int $errno, string $errstr, string $errfile, int $errline) => true);
-        $newInstace = match (true) {
+        $query = (new DOMXPath(new DOMDocument()))->query(...);
+        $domXPath = Cloak::warning($query);
+
+        return match (true) {
             $expression === $this->tableExpression => $this,
-            false === (new DOMXPath(new DOMDocument()))->query($expression) => throw new ParserError('The xpath expression `'.$expression.'` is invalie.'),
+            false === $domXPath($expression) => throw new ParserError(
+                message: 'The xpath expression `'.$expression.'` is invalid.',
+                previous: $domXPath->errors()->last()
+            ),
             default => new self(
                 $expression,
                 $this->caption,
@@ -88,9 +90,6 @@ final class Parser
                 $this->throwOnXmlErrors,
             ),
         };
-        restore_error_handler();
-
-        return $newInstace;
     }
 
     /**
@@ -188,17 +187,28 @@ final class Parser
         };
     }
 
+    public function includeAllSections(): self
+    {
+        return $this->includeSection(...Section::cases());
+    }
+
+    public function excludeAllSections(): self
+    {
+        return $this->excludeSection(...Section::cases());
+    }
+
     public function includeSection(Section ...$sections): self
     {
-        $includedSections = array_reduce(
-            $sections,
-            function (array $carry, Section $section) {
-                $carry[$section->value] = 1;
+        $current = [];
+        foreach ($this->includedSections as $section) {
+            $current[$section->value] = $section;
+        }
+        foreach ($sections as $section) {
+            $current[$section->value] = $section;
+        }
 
-                return $carry;
-            },
-            $this->includedSections
-        );
+        ksort($current);
+        $includedSections = array_values($current);
 
         return match ($this->includedSections) {
             $includedSections => $this,
@@ -217,15 +227,17 @@ final class Parser
 
     public function excludeSection(Section ...$sections): self
     {
-        $includedSections = array_reduce(
-            $sections,
-            function (array $carry, Section $section) {
-                unset($carry[$section->value]);
+        $current = [];
+        foreach ($this->includedSections as $section) {
+            $current[$section->value] = $section;
+        }
 
-                return $carry;
-            },
-            $this->includedSections
-        );
+        foreach ($sections as $section) {
+            if (array_key_exists($section->value, $current)) {
+                unset($current[$section->value]);
+            }
+        }
+        $includedSections = array_values($current);
 
         return match ($this->includedSections) {
             $includedSections => $this,
@@ -337,15 +349,17 @@ final class Parser
             return $this->parseHtml($this->streamToString($filenameOrStream));
         }
 
-        set_error_handler(fn (int $errno, string $errstr, string $errfile, int $errline) => true);
-        $resource = fopen(...match ($filenameContext) {
+        $fopen = Cloak::warning(fopen(...));
+        $resource = $fopen(...match ($filenameContext) {
             null => [$filenameOrStream, 'r'],
             default => [$filenameOrStream, 'r', false, $filenameContext],
         });
-        restore_error_handler();
 
         if (!is_resource($resource)) {
-            throw new ParserError('`'.$filenameOrStream.'`: failed to open stream: No such file or directory.');
+            throw new ParserError(
+                message: '`'.$filenameOrStream.'`: failed to open stream: No such file or directory.',
+                previous: $fopen->errors()->last()
+            );
         }
 
         $html = $this->streamToString($resource);
@@ -393,12 +407,12 @@ final class Parser
      */
     private function streamToString($stream): string
     {
-        set_error_handler(fn (int $errno, string $errstr, string $errfile, int $errline) => true);
-        $html = stream_get_contents($stream);
-        restore_error_handler();
+        $stream_get_contents = Cloak::warning(stream_get_contents(...));
+        /** @var string|false $html */
+        $html = $stream_get_contents($stream);
 
         return match (false) {
-            $html => throw new ParserError('The resource could not be read.'),
+            $html => throw new ParserError('The resource could not be read.', 0, $stream_get_contents->errors()->last()),
             default => $html,
         };
     }
@@ -474,7 +488,7 @@ final class Parser
                 continue;
             }
 
-            if (Section::tr === $section && null !== ($record = $this->filterRecord($childNode))) {
+            if (Section::Tr === $section && null !== ($record = $this->filterRecord($childNode))) {
                 $iterator->append($this->formatRecord($this->extractRecord($record, $rowSpan), $header));
                 continue;
             }
@@ -492,7 +506,11 @@ final class Parser
 
     private function isIncludedSection(?Section $nodeName): bool
     {
-        return array_key_exists($nodeName?->value ?? '', $this->includedSections);
+        if (null === $nodeName) {
+            return false;
+        }
+
+        return in_array($nodeName, $this->includedSections, true);
     }
 
     private function filterRecord(DOMNode $tr): ?DOMElement

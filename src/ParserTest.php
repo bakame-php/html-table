@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Bakame\HtmlTable;
+namespace Bakame\TabularData\HtmlTable;
 
 use DOMDocument;
 use DOMElement;
@@ -46,8 +46,8 @@ TABLE;
             $parser,
             $parser
                 ->tablePosition(0)
-                ->tableHeaderPosition(Section::thead, 0)
-                ->includeSection(Section::tbody, Section::tfoot, Section::tr)
+                ->tableHeaderPosition(Section::Thead, 0)
+                ->includeSection(Section::Tbody, Section::Tfoot, Section::Tr)
                 ->tableHeader([])
                 ->resolveTableHeader()
                 ->ignoreXmlErrors()
@@ -110,7 +110,7 @@ TABLE;
     {
         $this->expectException(ParserError::class);
 
-        Parser::new()->tableHeaderPosition(Section::thead, -1); /* @phpstan-ignore-line */
+        Parser::new()->tableHeaderPosition(Section::Thead, -1); /* @phpstan-ignore-line */
     }
 
     #[Test]
@@ -198,7 +198,7 @@ HTML;
         $stream = fopen(dirname(__DIR__).'/test_files/table.html', 'r');
         $table = Parser::new()
             ->tablePosition('testb')
-            ->tableHeaderPosition(Section::tr)
+            ->tableHeaderPosition(Section::Tr)
             ->parseFile($stream);
 
         self::assertSame(['prenoms', 'nombre', 'sexe', 'annee'], $table->getHeader());
@@ -238,7 +238,7 @@ HTML;
 TABLE;
 
         $table = Parser::new()
-            ->tableHeaderPosition(Section::tbody)
+            ->tableHeaderPosition(Section::Tbody)
             ->parseHtml($html);
 
         self::assertSame(['prenoms', 'nombre', 'sexe', 'annee'], $table->getHeader());
@@ -405,7 +405,7 @@ TABLE;
         $simpleXML = simplexml_load_string($html);
 
         $table = Parser::new()
-            ->tableHeaderPosition(Section::tbody)
+            ->tableHeaderPosition(Section::Tbody)
             ->parseHtml($simpleXML);
 
         self::assertSame([], $table->getHeader());
@@ -424,7 +424,7 @@ TABLE;
 TABLE;
 
         $table = Parser::new()
-            ->tableHeaderPosition(Section::tr)
+            ->tableHeaderPosition(Section::Tr)
             ->parseHtml($html);
 
         self::assertSame([], $table->getHeader());
@@ -446,7 +446,7 @@ TABLE;
 TABLE;
 
         $table = Parser::new()
-            ->excludeSection(Section::tfoot)
+            ->excludeSection(Section::Tfoot)
             ->parseHtml($html);
 
         self::assertSame([], $table->getHeader());
@@ -460,7 +460,7 @@ TABLE;
         $stream = fopen(dirname(__DIR__).'/test_files/table.html', 'r');
         $table = Parser::new()
             ->tablePosition('testb')
-            ->tableHeaderPosition(Section::tr)
+            ->tableHeaderPosition(Section::Tr)
             ->withFormatter(function (array $record): array {
                 $record = array_map(strtoupper(...), $record);
                 $record['nombre'] = (int) $record['nombre'];

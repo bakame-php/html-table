@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Bakame\HtmlTable;
+namespace Bakame\TabularData\HtmlTable;
 
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Bakame\HtmlTable;
+namespace Bakame\TabularData\HtmlTable;
 
 use InvalidArgumentException;
 use LibXMLError;
