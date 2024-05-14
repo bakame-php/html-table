@@ -11,7 +11,7 @@
 tabular data represented as HTML Table. Once installed you will be able to do the following:
 
 ```php
-use Bakame\TabularData\HtmlTable\Parser;
+use Bakame\HtmlTable\Parser;
 
 $table = Parser::new()
     ->tableHeader(['rank', 'move', 'team', 'player', 'won', 'drawn', 'lost', 'for', 'against', 'gd', 'points'])
@@ -57,7 +57,7 @@ for more information.
 **The `Parser` constructor is private to instantiate the object you are required to use the `new` method instead**
 
 ```php
-use Bakame\TabularData\HtmlTable\Parser;
+use Bakame\HtmlTable\Parser;
 
 $parser = Parser::new()
     ->ignoreTableHeader()
@@ -72,7 +72,7 @@ To extract and parse your table use either the `parseHtml` or `parseFile` method
 If parsing is not possible a `ParseError` exception will be thrown.
 
 ```php
-use Bakame\TabularData\HtmlTable\Parser;
+use Bakame\HtmlTable\Parser;
 
 $parser = Parser::new();
 
@@ -97,7 +97,7 @@ Both methods return a `Table` instance which implements the `League\Csv\TabularD
 interface and also give access to the table caption if present via the `getCaption` method.
 
 ```php
-use Bakame\TabularData\HtmlTable\Parser;
+use Bakame\HtmlTable\Parser;
 
 $html = <<<HTML
 <div>
@@ -161,7 +161,7 @@ favor `Parser::tableXpathPosition` which expects an `xpath` expression.
 If the expression is valid, and a list of table is found, the first result will be returned.
 
 ```php
-use Bakame\TabularData\HtmlTable\Parser;
+use Bakame\HtmlTable\Parser;
 
 $parser = Parser::new()->tablePosition('table-id'); // parses the <table id='table-id'>
 $parser = Parser::new()->tablePosition(3); // parses the 4th table of the page
@@ -177,7 +177,7 @@ recommended to use one or the other but not both at the same time.**
 You can optionally define a caption for your table if none is present or found during parsing.
 
 ```php
-use Bakame\TabularData\HtmlTable\Parser;
+use Bakame\HtmlTable\Parser;
 
 $parser = Parser::new()->tableCaption('this is a generated caption');
 $parser = Parser::new()->tableCaption(null);  // remove any default caption set
@@ -194,18 +194,18 @@ But you can override this behaviour using one of these settings:
 Tells where to locate and resolve the table header
 
 ```php
-use Bakame\TabularData\HtmlTable\Parser;
-use Bakame\TabularData\HtmlTable\Section;
+use Bakame\HtmlTable\Parser;
+use Bakame\HtmlTable\Section;
 
 $parser = Parser::new()->tableHeaderPosition(Section::Thead, 3);
 // header is the 4th row in the <thead> table section
 ```
 
-The method uses the `Bakame\TabularData\HtmlTable\Section` enum to designate which table section to use
+The method uses the `Bakame\HtmlTable\Section` enum to designate which table section to use
 to resolve the header
 
 ```php
-use Bakame\TabularData\HtmlTable\Section;
+use Bakame\HtmlTable\Section;
 
 enum Section
 {
@@ -225,7 +225,7 @@ Instructs the parser to resolve or not the table header using `tableHeaderPositi
 If no resolution is done, no header will be included in the returned `Table` instance.
 
 ```php
-use Bakame\TabularData\HtmlTable\Parser;
+use Bakame\HtmlTable\Parser;
 
 $parser = Parser::new()->ignoreTableHeader();  // no table header will be resolved
 $parser = Parser::new()->resolveTableHeader(); // will attempt to resolve the table header
@@ -237,8 +237,8 @@ You can specify directly the header of your table and override any other table h
 related configuration with this configuration
 
 ```php
-use Bakame\TabularData\HtmlTable\Parser;
-use Bakame\TabularData\HtmlTable\Section;
+use Bakame\HtmlTable\Parser;
+use Bakame\HtmlTable\Section;
 
 $parser = Parser::new()->tableHeader(['rank', 'team', 'winner']);
 ```
@@ -251,8 +251,8 @@ You can skip or re-arrange the source columns by skipping them by their offsets 
 re-ordering the offsets.
 
 ```php
-use Bakame\TabularData\HtmlTable\Parser;
-use Bakame\TabularData\HtmlTable\Section;
+use Bakame\HtmlTable\Parser;
+use Bakame\HtmlTable\Section;
 
 $parser = Parser::new()->tableHeader([3 => 'rank',  7 => 'winner', 5 => 'team']);
 // only 3 column will be extracted the 4th, 6th and 8th columns
@@ -265,8 +265,8 @@ $parser = Parser::new()->tableHeader([3 => 'rank',  7 => 'winner', 5 => 'team'])
 Tells which section should be parsed based on the `Section` enum
 
 ```php
-use Bakame\TabularData\HtmlTable\Parser;
-use Bakame\TabularData\HtmlTable\Section;
+use Bakame\HtmlTable\Parser;
+use Bakame\HtmlTable\Section;
 
 $parser = Parser::new()->includeSection(Section::Tbody);  // thead and tfoot are included during parsing
 $parser = Parser::new()->excludeSection(Section::Tr, Section::Tfoot); // table direct tr children and tfoot are not included during parsing
@@ -292,7 +292,7 @@ Adds or remove a record formatter applied to the data extracted from the table b
 can access it. The header is not affected by the formatter if it is defined.
 
 ```php
-use Bakame\TabularData\HtmlTable\Parser;
+use Bakame\HtmlTable\Parser;
 
 $parser = Parser::new()->withFormatter($formatter); // attach a formatter to the parser
 $parser = Parser::new()->withoutFormatter();        // removed the attached formatter if it exists
@@ -331,7 +331,7 @@ $formatter = function (array $record): array {
 Tells whether the parser should ignore or throw in case of malformed HTML content.
 
 ```php
-use Bakame\TabularData\HtmlTable\Parser;
+use Bakame\HtmlTable\Parser;
 
 $parser = Parser::new()->ignoreXmlErrors();   // ignore the XML errors
 $parser = Parser::new()->failOnXmlErrors(3); // throw on XML errors
