@@ -7,7 +7,7 @@
 [![Total Downloads](https://img.shields.io/packagist/dt/bakame/html-table.svg?style=flat-square)](https://packagist.org/packages/bakame/html-table)
 [![Sponsor development of this project](https://img.shields.io/badge/sponsor%20this%20package-%E2%9D%A4-ff69b4.svg?style=flat-square)](https://github.com/sponsors/nyamsprod)
 
-`bakame/html-table` is a small PHP package that allows you to parse, import and manipualte
+`bakame/html-table` is a small PHP package that allows you to parse, import and manipulate
 tabular data represented as HTML Table. Once installed you will be able to do the following:
 
 ```php
@@ -35,7 +35,7 @@ $table
 
 ## System Requirements
 
-**league\csv >= 9.11.0** library is required.
+**league\csv 9.23.0** library is required. (since version 0.4.0).
 
 ## Installation
 
