@@ -150,7 +150,6 @@ HTML;
         self::assertSame($row, $table->first());
 
         $sliced = $table->slice(0, 1);
-        self::assertInstanceOf(Table::class, $sliced);
         self::assertSame(['caption' => null, 'header' => $header, 'rows' => [$row]], $sliced->jsonSerialize());
     }
 

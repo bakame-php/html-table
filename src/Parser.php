@@ -13,8 +13,10 @@ use DOMNode;
 use DOMNodeList;
 use DOMXPath;
 use Iterator;
+use League\Csv\Buffer;
 use League\Csv\ResultSet;
 use League\Csv\SyntaxError;
+use League\Csv\TabularDataReader;
 use SimpleXMLElement;
 use Stringable;
 
@@ -342,6 +344,8 @@ final class Parser
      *
      * @throws ParserError
      * @throws SyntaxError
+     *
+     * @return Table<array<array-key, mixed>>
      */
     public function parseFile(mixed $filenameOrStream, $filenameContext = null): Table
     {
@@ -371,6 +375,8 @@ final class Parser
     /**
      * @throws ParserError
      * @throws SyntaxError
+     *
+     * @return Table<array<array-key, mixed>>
      */
     public function parseHtml(DOMDocument|DOMElement|SimpleXMLElement|Stringable|string $source): Table
     {
@@ -393,11 +399,19 @@ final class Parser
             default => $this->extractTableHeader($xpath),
         };
 
+        $buffer = new Buffer(array_values($header));
+        /** @var array<array-key, mixed> $tableRow */
+        foreach ($this->extractTableContents($xpath, $header) as $tableRow) {
+            $buffer->insert($tableRow);
+        }
+
         /** @var DOMNodeList<DOMElement> $result */
         $result = $xpath->query('(//caption)[1]');
         $caption = $result->item(0)?->nodeValue ?? $this->caption;
+        /** @var TabularDataReader<array<array-key, mixed>> $tabularDataReader */
+        $tabularDataReader = ResultSet::from($buffer);
 
-        return new Table(new ResultSet($this->extractTableContents($xpath, $header), array_values($header)), $caption);
+        return new Table($tabularDataReader, $caption);
     }
 
     /**

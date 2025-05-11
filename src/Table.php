@@ -9,8 +9,16 @@ use Iterator;
 use JsonSerializable;
 use League\Csv\TabularDataReader;
 
+/**
+ * @template TValue of array<array-key, mixed>
+ *
+ * @implements TabularDataReader<array<array-key, mixed>>
+ */
 final class Table implements TabularDataReader, JsonSerializable
 {
+    /**
+     * @param TabularDataReader<array<array-key, mixed>> $tabularDataReader
+     */
     public function __construct(
         private readonly TabularDataReader $tabularDataReader,
         private readonly ?string $caption = null
@@ -69,6 +77,10 @@ final class Table implements TabularDataReader, JsonSerializable
         return $this->tabularDataReader->first();
     }
 
+    /**
+     *
+     * @return Table<array<array-key, mixed>>
+     */
     public function filter(Closure $closure): TabularDataReader
     {
         return new self($this->tabularDataReader->filter($closure), $this->caption);
@@ -89,11 +101,17 @@ final class Table implements TabularDataReader, JsonSerializable
         return $this->tabularDataReader->reduce($closure, $initial);
     }
 
-    public function slice(int $offset, int $length = null): TabularDataReader
+    /**
+     * @return Table<array<array-key, mixed>>
+     */
+    public function slice(int $offset, ?int $length = null): TabularDataReader
     {
         return new self($this->tabularDataReader->slice($offset, $length), $this->caption);
     }
 
+    /**
+     * @return Table<array<array-key, mixed>>
+     */
     public function sorted(Closure $orderBy): TabularDataReader
     {
         return new self($this->tabularDataReader->sorted($orderBy), $this->caption);
@@ -143,22 +161,33 @@ final class Table implements TabularDataReader, JsonSerializable
         return $this->tabularDataReader->fetchColumn($index);
     }
 
+    /**
+     * @return TabularDataReader<array<array-key, mixed>>
+     */
     public function select(string|int ...$columnOffsetOrName): TabularDataReader
     {
         return $this->tabularDataReader->select(...$columnOffsetOrName);
     }
 
-    /** @return iterable<TabularDataReader> */
+    /** @return iterable<TabularDataReader<array<array-key, mixed>>> */
     public function matching(string $expression): iterable
     {
         return $this->tabularDataReader->matching($expression);
     }
 
+    /**
+     *
+     * @return ?TabularDataReader<array<array-key, mixed>>
+     */
     public function matchingFirst(string $expression): ?TabularDataReader
     {
         return $this->tabularDataReader->matchingFirst($expression);
     }
 
+    /**
+     *
+     * @return TabularDataReader<array<array-key, mixed>>
+     */
     public function matchingFirstOrFail(string $expression): TabularDataReader
     {
         return $this->tabularDataReader->matchingFirstOrFail($expression);
