@@ -11,7 +11,7 @@
 tabular data represented as HTML Table. Once installed you will be able to do the following:
 
 ```php
-use Bakame\HtmlTable\Parser;
+use Bakame\TabularData\HtmlTable\Parser;
 
 $table = Parser::new()
     ->tableHeader(['rank', 'move', 'team', 'player', 'won', 'drawn', 'lost', 'for', 'against', 'gd', 'points'])
