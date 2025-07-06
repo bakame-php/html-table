@@ -2,11 +2,18 @@
 
 All Notable changes to `bakame/html-table` will be documented in this file.
 
-# [0.4.0](https://github.com/bakame-php/html-table/compare/0.4.0...0.5.0) - 2025-07-06
+# [0.5.0](https://github.com/bakame-php/html-table/compare/0.4.0...0.5.0) - 2025-07-06
 
 ## What's Changed
 
 * Upgrade dependencies on `aide-error` to version `0.2.0`
+* fix use statement by @tacman in https://github.com/bakame-php/html-table/pull/6
+
+## New Contributors
+
+* @tacman made their first contribution in https://github.com/bakame-php/html-table/pull/6
+
+**Full Changelog**: https://github.com/bakame-php/html-table/compare/0.4.0...0.5.0
 
 # [0.4.0](https://github.com/bakame-php/html-table/compare/0.3.0...0.4.0) - 2025-05-11
 
