@@ -2,6 +2,26 @@
 
 All Notable changes to `bakame/html-table` will be documented in this file.
 
+# [0.4.0](https://github.com/bakame-php/html-table/compare/0.4.0...0.5.0) - 2025-07-06
+
+## What's Changed
+
+* Upgrade dependencies on `aide-error` to version `0.2.0`
+
+# [0.4.0](https://github.com/bakame-php/html-table/compare/0.3.0...0.4.0) - 2025-05-11
+
+## What's Changed
+
+* updates namespace in docs by @danieldevine in https://github.com/bakame-php/html-table/pull/3
+* Add support for PHP8.4 by @nyamsprod
+* But league/csv requirement to version 9.23.0 by @nyamsprod
+
+## New Contributors
+
+* @danieldevine made their first contribution in https://github.com/bakame-php/html-table/pull/3
+
+**Full Changelog**: https://github.com/bakame-php/html-table/compare/0.3.0...0.4.0
+
 ## [0.3.0](https://github.com/bakame-php/html-table/compare/0.2.0...0.3.0) - 2023-09-29
 
 ### Added
