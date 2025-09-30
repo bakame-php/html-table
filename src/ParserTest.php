@@ -7,11 +7,17 @@ namespace Bakame\TabularData\HtmlTable;
 use DOMDocument;
 use DOMElement;
 use League\Csv\TabularDataReader;
+use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use SimpleXMLElement;
 
+#[CoversClass(Warning::class)]
+#[CoversClass(Parser::class)]
+#[CoversClass(Feature::class)]
+#[CoversClass(Section::class)]
+#[CoversClass(Table::class)]
 final class ParserTest extends TestCase
 {
     private const HTML = <<<TABLE

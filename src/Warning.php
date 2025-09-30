@@ -46,27 +46,4 @@ final class Warning
             restore_error_handler();
         }
     }
-
-    /**
-     * Hides PHP Warnings.
-     *
-     * @param mixed ...$arguments the callback arguments if needed
-     *
-     * @throws Throwable on callback execution if the callback throws
-     *
-     * @return TReturn The result returned by the callback.
-     */
-    public static function cloak(callable $callback, mixed ...$arguments): mixed
-    {
-        set_error_handler(
-            fn (int $errno, string $errstr, string $errfile, int $errline): bool =>
-            in_array($errno, [E_WARNING, E_USER_WARNING], true),
-        );
-
-        try {
-            return $callback(...$arguments);
-        } finally {
-            restore_error_handler();
-        }
-    }
 }

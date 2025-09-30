@@ -15,10 +15,10 @@ use DOMXPath;
 use ErrorException;
 use Iterator;
 use League\Csv\Buffer;
+use League\Csv\CannotInsertRecord;
 use League\Csv\ResultSet;
 use League\Csv\SyntaxError;
 use League\Csv\TabularDataReader;
-use PHPUnit\Framework\Attributes\CodeCoverageIgnore;
 use SimpleXMLElement;
 use SplFileInfo;
 use Stringable;
@@ -359,6 +359,7 @@ final class Parser
     /**
      * @throws ParserError
      * @throws SyntaxError
+     * @throws CannotInsertRecord
      *
      * @return Table<array<array-key, mixed>>
      */
