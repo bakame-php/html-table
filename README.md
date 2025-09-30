@@ -8,7 +8,7 @@
 [![Sponsor development of this project](https://img.shields.io/badge/sponsor%20this%20package-%E2%9D%A4-ff69b4.svg?style=flat-square)](https://github.com/sponsors/nyamsprod)
 
 `bakame/html-table` is a small PHP package that allows you to parse, import and manipulate
-tabular data represented as HTML Table. Once installed you will be able to do the following:
+tabular data represented as HTML Table. Once installed, you will be able to do the following:
 
 ```php
 use Bakame\TabularData\HtmlTable\Parser;
@@ -18,6 +18,7 @@ $table = Parser::new()
     ->parseFile('https://www.bbc.com/sport/football/tables');
 
 $table
+    ->getTabularData()
     ->filter(fn (array $row) => (int) $row['points'] >= 10)
     ->sorted(fn (array $rowA, array $rowB) => (int) $rowB['for'] <=> (int) $rowA['for'])
     ->fetchPairs('team', 'for');
@@ -35,7 +36,7 @@ $table
 
 ## System Requirements
 
-**league\csv 9.23.0** library is required. (since version 0.4.0).
+**league\csv 9.25.0** library is required. (since version 0.6.0).
 
 ## Installation
 
@@ -62,7 +63,6 @@ use Bakame\HtmlTable\Parser;
 $parser = Parser::new()
     ->ignoreTableHeader()
     ->ignoreXmlErrors()
-    ->withoutFormatter()
     ->tableCaption('This is a beautiful table');
 ```
 
@@ -74,7 +74,7 @@ If parsing is not possible a `ParseError` exception will be thrown.
 ```php
 use Bakame\HtmlTable\Parser;
 
-$parser = Parser::new();
+$parser = new Parser();
 
 $table = $parser->parseHtml('<table>...</table>');
 $table = $parser->parseFile('path/to/html/file.html');
@@ -129,7 +129,7 @@ $html = <<<HTML
 </div>
 HTML;
 
-$table = Parser::new()->parseHtml($html);
+$table = (new Parser())->parseHtml($html);
 $table->getCaption(); //returns 'Songs'
 $table->getHeader();  //returns ['Title','Singer', 'Country']
 $tableData = $table->geTabularData();
@@ -140,14 +140,14 @@ json_encode($tableData->slice(0, 1));
 
 #### Default configuration
 
-By default, when calling the `Parser::new()` named constructor the parser will:
+By default, when calling the `new Parser()` the parser will:
 
 - try to parse the first table found in the page
 - expect the table header row to be the first `tr` found in the `thead` section of your table
 - exclude the table `thead` section when extracting the table content.
 - ignore XML errors.
 - have no formatter attached.
-- have no default caption to used if none is present in the table.
+- have no default caption to be used if none is present in the table.
 
 Each of the following settings can be changed to improve the conversion against your business rules:
 
@@ -164,9 +164,9 @@ If the expression is valid, and a list of table is found, the first result will 
 ```php
 use Bakame\HtmlTable\Parser;
 
-$parser = Parser::new()->tablePosition('table-id'); // parses the <table id='table-id'>
-$parser = Parser::new()->tablePosition(3); // parses the 4th table of the page
-$parser = Parser::new()->tableXPathPosition("//main/div/table");
+$parser = (new Parser())->tablePosition('table-id'); // parses the <table id='table-id'>
+$parser = (new Parser())->tablePosition(3); // parses the 4th table of the page
+$parser = (new Parser())->tableXPathPosition("//main/div/table");
 //parse the first table that matches the xpath expression
 ```
 
@@ -180,8 +180,8 @@ You can optionally define a caption for your table if none is present or found d
 ```php
 use Bakame\HtmlTable\Parser;
 
-$parser = Parser::new()->tableCaption('this is a generated caption');
-$parser = Parser::new()->tableCaption(null);  // remove any default caption set
+$parser = (new Parser())->tableCaption('this is a generated caption');
+$parser = (new Parser())->tableCaption(null);  // remove any default caption set
 ```
 
 ### tableHeader, tableHeaderPosition, ignoreTableHeader and resolveTableHeader
@@ -198,7 +198,7 @@ Tells where to locate and resolve the table header
 use Bakame\HtmlTable\Parser;
 use Bakame\HtmlTable\Section;
 
-$parser = Parser::new()->tableHeaderPosition(Section::Thead, 3);
+$parser = (new Parser())->tableHeaderPosition(Section::Thead, 3);
 // header is the 4th row in the <thead> table section
 ```
 
@@ -228,8 +228,8 @@ If no resolution is done, no header will be included in the returned `Table` ins
 ```php
 use Bakame\HtmlTable\Parser;
 
-$parser = Parser::new()->ignoreTableHeader();  // no table header will be resolved
-$parser = Parser::new()->resolveTableHeader(); // will attempt to resolve the table header
+$parser = (new Parser())->ignoreTableHeader();  // no table header will be resolved
+$parser = (new Parser())->resolveTableHeader(); // will attempt to resolve the table header
 ```
 
 #### tableHeader
@@ -241,12 +241,12 @@ related configuration with this configuration
 use Bakame\HtmlTable\Parser;
 use Bakame\HtmlTable\Section;
 
-$parser = Parser::new()->tableHeader(['rank', 'team', 'winner']);
+$parser = (new Parser())->tableHeader(['rank', 'team', 'winner']);
 ```
 
 **If you specify a non-empty array as the table header, it will take precedence over any other table header related options.**
 
-**Because it is a tabular data each cell MUST be unique otherwise an exception will be thrown**
+**Because it is tabular data, each cell MUST be unique otherwise an exception will be thrown**
 
 You can skip or re-arrange the source columns by skipping them by their offsets and/or by
 re-ordering the offsets.
@@ -255,8 +255,8 @@ re-ordering the offsets.
 use Bakame\HtmlTable\Parser;
 use Bakame\HtmlTable\Section;
 
-$parser = Parser::new()->tableHeader([3 => 'rank',  7 => 'winner', 5 => 'team']);
-// only 3 column will be extracted the 4th, 6th and 8th columns
+$parser = (new Parser())->tableHeader([3 => 'rank',  7 => 'winner', 5 => 'team']);
+// only 3 columns will be extracted the 4th, 6th and 8th columns
 // and re-arrange as 'rank' first and 'team' last
 // if a column is missing its value will be PHP `null` type
 ```
@@ -269,23 +269,23 @@ Tells which section should be parsed based on the `Section` enum
 use Bakame\HtmlTable\Parser;
 use Bakame\HtmlTable\Section;
 
-$parser = Parser::new()->includeSection(Section::Tbody);  // thead and tfoot are included during parsing
-$parser = Parser::new()->excludeSection(Section::Tr, Section::Tfoot); // table direct tr children and tfoot are not included during parsing
+$parser = (new Parser())->includeSection(Section::Tbody);  // thead and tfoot are included during parsing
+$parser = (new Parser())->excludeSection(Section::Tr, Section::Tfoot); // table direct tr children and tfoot are not included during parsing
 ```
 
 **By default, the `thead` section is not parse. If a `thead` row is selected to be the header, it will
 be parsed independently of this setting.**
 
-**⚠️Tips:** to be sure of which sections will be modified, first remove all previous setting
+**⚠️Tips:** to be sure of which sections will be modified, first remove all previous settings
 before applying your configuration as shown below:
 
 ```diff
-- Parser::new()->includeSection(Section::tbody);
-+ Parser::new()->excludeSection(...Section::cases())->includeSection(Section::tbody);
+- (new Parser())->includeSection(Section::tbody);
++ (new Parser())->excludeSection(...Section::cases())->includeSection(Section::tbody);
 ```
 
 The first call will still include the `tfoot` and the `tr` sections, whereas the second call
-remove any previous setting guaranting that only the `tbody` if present will be parsed.
+removes any previous setting guaranting that only the `tbody` if present will be parsed.
 
 ### withFormatter and withoutFormatter
 
@@ -295,8 +295,8 @@ can access it. The header is not affected by the formatter if it is defined.
 ```php
 use Bakame\HtmlTable\Parser;
 
-$parser = Parser::new()->withFormatter($formatter); // attach a formatter to the parser
-$parser = Parser::new()->withoutFormatter();        // removed the attached formatter if it exists
+$parser = (new Parser())->withFormatter($formatter); // attach a formatter to the parser
+$parser = (new Parser())->withFormatter(null);       // removed the attached formatter if it exists
 ```
 
 The formatter closure signature should be:
@@ -334,8 +334,8 @@ Tells whether the parser should ignore or throw in case of malformed HTML conten
 ```php
 use Bakame\HtmlTable\Parser;
 
-$parser = Parser::new()->ignoreXmlErrors();   // ignore the XML errors
-$parser = Parser::new()->failOnXmlErrors(3); // throw on XML errors
+$parser = (new Parser())->ignoreXmlErrors();   // ignore the XML errors
+$parser = (new Parser())->failOnXmlErrors(3); // throw on XML errors
 ```
 
 ## Testing
