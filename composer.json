@@ -30,9 +30,7 @@
     "ext-libxml": "*",
     "ext-mbstring": "*",
     "ext-simplexml": "*",
-    "bakame/aide-enums": "^0.1.0",
-    "bakame/aide-error": "^0.2.0",
-    "league/csv": "^9.23.0"
+    "league/csv": "^9.25.0"
   },
   "require-dev": {
     "ext-curl": "*",
@@ -54,7 +52,7 @@
     }
   },
   "scripts": {
-    "phpcs": "PHP_CS_FIXER_IGNORE_ENV=1 php-cs-fixer fix -vvv --diff --dry-run --allow-risky=yes --ansi",
+    "phpcs": "php-cs-fixer fix -vvv --diff --dry-run --allow-risky=yes --ansi",
     "phpcs:fix": "php-cs-fixer fix -vvv --allow-risky=yes --ansi",
     "phpstan": "phpstan analyse -c phpstan.neon --ansi --memory-limit=192M",
     "phpunit": "XDEBUG_MODE=coverage phpunit --coverage-text",

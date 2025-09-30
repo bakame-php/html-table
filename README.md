@@ -132,9 +132,10 @@ HTML;
 $table = Parser::new()->parseHtml($html);
 $table->getCaption(); //returns 'Songs'
 $table->getHeader();  //returns ['Title','Singer', 'Country']
-$table->nth(2); //returns ["Title" => "Nzinzi", "Singer" => "Emeneya", "Country" => "DR Congo"]
-json_encode($table->slice(0, 1));
-//{"caption":"Songs","header":["Title","Singer","Country"],"rows":[{"Title":"Nakei Nairobi","Singer":"Mbilia Bel","Country":"DR Congo"}]}
+$tableData = $table->geTabularData();
+$tableData->nth(2); //returns ["Title" => "Nzinzi", "Singer" => "Emeneya", "Country" => "DR Congo"]
+json_encode($tableData->slice(0, 1));
+//[{"Title":"Nakei Nairobi","Singer":"Mbilia Bel","Country":"DR Congo"}]
 ```
 
 #### Default configuration
@@ -233,7 +234,7 @@ $parser = Parser::new()->resolveTableHeader(); // will attempt to resolve the ta
 
 #### tableHeader
 
-You can specify directly the header of your table and override any other table header
+You can directly specify the header of your table and override any other table header
 related configuration with this configuration
 
 ```php
@@ -288,7 +289,7 @@ remove any previous setting guaranting that only the `tbody` if present will be 
 
 ### withFormatter and withoutFormatter
 
-Adds or remove a record formatter applied to the data extracted from the table before you
+Add or remove a record formatter applied to the data extracted from the table before you
 can access it. The header is not affected by the formatter if it is defined.
 
 ```php
@@ -304,7 +305,7 @@ The formatter closure signature should be:
 function (array $record): array;
 ```
 
-If a header was defined or specified, the submitted record will have the header definition set,
+If a header was defined or specified, the submitted record will have the header definition set;
 otherwise an array list is provided.
 
 The following formatter will work on any table content as long as it is defined as a string.

@@ -147,10 +147,10 @@ HTML;
 
         self::assertSame(['prenoms', 'nombre', 'sexe', 'annee'], $table->getHeader());
         self::assertCount(4, $table);
-        self::assertSame($row, $table->first());
+        self::assertSame($row, $table->getTabularData()->first());
 
-        $sliced = $table->slice(0, 1);
-        self::assertSame(['caption' => null, 'header' => $header, 'rows' => [$row]], $sliced->jsonSerialize());
+        $sliced = $table->getTabularData()->slice(0, 1);
+        self::assertSame([$row], iterator_to_array($sliced));
     }
 
     #[Test]
@@ -165,7 +165,7 @@ HTML;
             '15',
             'M',
             '2004',
-        ], $table->first());
+        ], $table->getTabularData()->first());
     }
 
     #[Test]
@@ -207,7 +207,7 @@ HTML;
             'nombre' => '15',
             'sexe' => 'M',
             'annee' => '2004',
-        ], $table->first());
+        ], $table->getTabularData()->first());
 
         fclose($stream);
     }
@@ -247,7 +247,7 @@ TABLE;
             'nombre' => '15',
             'sexe' => 'M',
             'annee' => '2004',
-        ], $table->nth(0));
+        ], $table->getTabularData()->nth(0));
     }
 
     #[Test]
@@ -280,7 +280,7 @@ TABLE;
             'count' => '15',
             'gender' => 'M',
             'year' => '2004',
-        ], $table->first());
+        ], $table->getTabularData()->first());
     }
 
 
@@ -309,7 +309,7 @@ TABLE;
             'Sexe' => 'M',
             'Firstname' => 'Abel',
             'Count' => '14',
-        ], $table->first());
+        ], $table->getTabularData()->first());
 
         $header = [3 => 'Annee', 0 => 'Firstname', 1 => 'Count'];
         $table = Parser::new()
@@ -321,7 +321,7 @@ TABLE;
             'Annee' => '2004',
             'Firstname' => 'Abel',
             'Count' => '14',
-        ], $table->first());
+        ], $table->getTabularData()->first());
     }
 
     #[Test]
@@ -339,9 +339,10 @@ TABLE;
 TABLE;
 
         $table = Parser::new()->parseHtml($html);
+        $data = $table->getTabularData();
 
-        self::assertSame($table->nth(1), ['Abdoulaye', 'Abdoulaye', 'Abdoulaye', '2004']);
-        self::assertSame($table->nth(0), ['prenoms', 'nombre', 'sexe', 'annee']);
+        self::assertSame($data->nth(1), ['Abdoulaye', 'Abdoulaye', 'Abdoulaye', '2004']);
+        self::assertSame($data->nth(0), ['prenoms', 'nombre', 'sexe', 'annee']);
     }
 
     #[Test]
@@ -363,9 +364,11 @@ TABLE;
 
         $table = Parser::new()->parseHtml($dom);
 
+        $tabularData = $table->getTabularData();
+
         self::assertSame([], $table->getHeader());
-        self::assertSame($table->first(), ['Abdoulaye', 'Abdoulaye', 'Abdoulaye', '2004']);
-        self::assertSame($table->nth(1), ['Abel', '14', 'M', '2004']);
+        self::assertSame($tabularData->first(), ['Abdoulaye', 'Abdoulaye', 'Abdoulaye', '2004']);
+        self::assertSame($tabularData->nth(1), ['Abel', '14', 'M', '2004']);
     }
 
     #[Test]
@@ -449,7 +452,7 @@ TABLE;
             ->parseHtml($html);
 
         self::assertSame([], $table->getHeader());
-        self::assertSame([], $table->first());
+        self::assertSame([], $table->getTabularData()->first());
     }
 
     #[Test]
@@ -476,7 +479,7 @@ TABLE;
             'nombre' => 15,
             'sexe' => 'M',
             'annee' => 2004,
-        ], $table->first());
+        ], $table->getTabularData()->first());
 
         fclose($stream);
     }
@@ -534,9 +537,9 @@ TABLE;
         );
         $table = Parser::new()->parseHtml($table);
 
-        self::assertSame(2, $reducer($table, 'colspan'));
-        self::assertSame(2, $reducer($table, 'rowspan'));
-        self::assertSame(6, $reducer($table, 'colspan+rowspan'));
+        self::assertSame(2, $reducer($table->getTabularData(), 'colspan'));
+        self::assertSame(2, $reducer($table->getTabularData(), 'rowspan'));
+        self::assertSame(6, $reducer($table->getTabularData(), 'colspan+rowspan'));
     }
 
     #[Test]

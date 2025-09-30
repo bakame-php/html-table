@@ -2,6 +2,11 @@
 
 All Notable changes to `bakame/html-table` will be documented in this file.
 
+# [Next](https://github.com/bakame-php/html-table/compare/0.5.0...main) - TBD
+
+* **BC BREAK:** the `Table` class now implements the `TabularDataProvider` instead of the `TabularDataReader` interface.
+* **BC BREAK:** the `ParserError` class now extends the `Exception` instead of the `InvalidArgumentException` exception class.
+
 # [0.5.0](https://github.com/bakame-php/html-table/compare/0.4.0...0.5.0) - 2025-07-06
 
 ## What's Changed

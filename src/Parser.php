@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace Bakame\TabularData\HtmlTable;
 
 use ArrayIterator;
-use Bakame\Aide\Error\Cloak;
 use Closure;
 use DOMDocument;
 use DOMElement;
 use DOMNode;
 use DOMNodeList;
 use DOMXPath;
+use ErrorException;
 use Iterator;
 use League\Csv\Buffer;
 use League\Csv\ResultSet;
@@ -72,26 +72,29 @@ final class Parser
 
     public function tableXPathPosition(string $expression): self
     {
-        $query = (new DOMXPath(new DOMDocument()))->query(...);
-        $domXPath = Cloak::warning($query);
+        if ($expression === $this->tableExpression) {
+            return $this;
+        }
 
-        return match (true) {
-            $expression === $this->tableExpression => $this,
-            false === $domXPath($expression) => throw new ParserError(
+        try {
+            Warning::trap((new DOMXPath(new DOMDocument()))->query(...), $expression);
+        } catch (ErrorException $exception) {
+            throw new ParserError(
                 message: 'The xpath expression `'.$expression.'` is invalid.',
-                previous: $domXPath->errors()->last()
-            ),
-            default => new self(
-                $expression,
-                $this->caption,
-                $this->tableHeader,
-                $this->ignoreTableHeader,
-                $this->tableHeaderExpression,
-                $this->includedSections,
-                $this->formatter,
-                $this->throwOnXmlErrors,
-            ),
-        };
+                previous: $exception
+            );
+        }
+
+        return  new self(
+            $expression,
+            $this->caption,
+            $this->tableHeader,
+            $this->ignoreTableHeader,
+            $this->tableHeaderExpression,
+            $this->includedSections,
+            $this->formatter,
+            $this->throwOnXmlErrors,
+        );
     }
 
     /**
@@ -353,16 +356,16 @@ final class Parser
             return $this->parseHtml($this->streamToString($filenameOrStream));
         }
 
-        $fopen = Cloak::warning(fopen(...));
-        $resource = $fopen(...match ($filenameContext) {
-            null => [$filenameOrStream, 'r'],
-            default => [$filenameOrStream, 'r', false, $filenameContext],
-        });
-
-        if (!is_resource($resource)) {
+        try {
+            /** @var resource $resource */
+            $resource = Warning::trap(fopen(...), ...match ($filenameContext) {
+                null => [$filenameOrStream, 'r'],
+                default => [$filenameOrStream, 'r', false, $filenameContext],
+            });
+        } catch (ErrorException $exception) {
             throw new ParserError(
                 message: '`'.$filenameOrStream.'`: failed to open stream: No such file or directory.',
-                previous: $fopen->errors()->last()
+                previous: $exception
             );
         }
 
@@ -383,14 +386,9 @@ final class Parser
         /** @var DOMNodeList<DOMElement> $query */
         $query = (new DOMXPath($this->sourceToDomDocument($source)))->query($this->tableExpression);
         $table = $query->item(0);
-        if (!$table instanceof DOMElement) {
-            throw new ParserError('The HTML table could not be found in the submitted html.');
-        }
-
+        $table instanceof DOMElement || throw new ParserError('The HTML table could not be found in the submitted html.');
         $tagName = strtolower($table->nodeName);
-        if ('table' !== $tagName) {
-            throw new ParserError('Expected a table element to be selected; received `'.$tagName.'` instead.');
-        }
+        'table' === $tagName || throw new ParserError('Expected a table element to be selected; received `'.$tagName.'` instead.');
 
         $xpath = new DOMXPath($this->sourceToDomDocument($table));
         $header = match (true) {
@@ -421,14 +419,14 @@ final class Parser
      */
     private function streamToString($stream): string
     {
-        $stream_get_contents = Cloak::warning(stream_get_contents(...));
-        /** @var string|false $html */
-        $html = $stream_get_contents($stream);
+        try {
+            /** @var string $result */
+            $result = Warning::trap(stream_get_contents(...), $stream);
 
-        return match (false) {
-            $html => throw new ParserError('The resource could not be read.', 0, $stream_get_contents->errors()->last()),
-            default => $html,
-        };
+            return $result;
+        } catch (ErrorException $exception) {
+            throw new ParserError(message: 'The resource could not be read.', previous: $exception);
+        }
     }
 
     /**

@@ -4,12 +4,8 @@ declare(strict_types=1);
 
 namespace Bakame\TabularData\HtmlTable;
 
-use Bakame\Aide\Enum\Helper;
-
 enum Section: string
 {
-    use Helper;
-
     case Thead = 'thead';
     case Tbody = 'tbody';
     case Tfoot = 'tfoot';
@@ -17,12 +13,12 @@ enum Section: string
 
     /**
      * @param int<0, max> $offset
+     *
+     * @throws ParserError
      */
     public function xpathRow(int $offset = 0): string
     {
-        if ($offset < 0) { /* @phpstan-ignore-line */
-            throw new ParserError('The table header row offset must be a positive integer or 0.');
-        }
+        $offset > -1 || throw new ParserError('The table header row offset must be a positive integer or 0.'); /* @phpstan-ignore-line */
 
         ++$offset;
         return match ($this) {
