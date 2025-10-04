@@ -5,24 +5,28 @@ declare(strict_types=1);
 namespace Bakame\TabularData\HtmlTable;
 
 use ArrayIterator;
-use Bakame\Aide\Error\Cloak;
 use Closure;
+use Deprecated;
 use DOMDocument;
 use DOMElement;
 use DOMNode;
 use DOMNodeList;
 use DOMXPath;
+use ErrorException;
 use Iterator;
 use League\Csv\Buffer;
+use League\Csv\CannotInsertRecord;
 use League\Csv\ResultSet;
 use League\Csv\SyntaxError;
 use League\Csv\TabularDataReader;
 use SimpleXMLElement;
+use SplFileInfo;
 use Stringable;
 
 use function array_fill;
 use function array_filter;
 use function array_key_exists;
+use function array_map;
 use function array_merge;
 use function array_shift;
 use function array_unique;
@@ -34,6 +38,10 @@ use function libxml_get_errors;
 use function libxml_use_internal_errors;
 use function preg_match;
 use function strtolower;
+use function trim;
+
+use const LIBXML_NOERROR;
+use const LIBXML_NOWARNING;
 
 final class Parser
 {
@@ -44,54 +52,43 @@ final class Parser
      * @param array<string> $tableHeader
      * @param array<Section> $includedSections
      */
-    private function __construct(
-        private readonly string $tableExpression,
-        private readonly ?string $caption,
-        private readonly array $tableHeader,
-        private readonly bool $ignoreTableHeader,
-        private readonly string $tableHeaderExpression,
-        private readonly array $includedSections,
-        private readonly ?Closure $formatter,
-        private readonly bool $throwOnXmlErrors,
+    public function __construct(
+        private readonly string $tableExpression = '(//table)[1]',
+        private readonly ?string $caption = null,
+        private readonly array $tableHeader = [],
+        private readonly Feature $ignoreTableHeader = Feature::Disabled,
+        private readonly string $tableHeaderExpression = '(//table/thead/tr)[1]',
+        private readonly array $includedSections = [Section::Tbody, Section::Tfoot, Section::Tr],
+        private readonly ?Closure $formatter = null,
+        private readonly Feature $throwOnXmlErrors = Feature::Disabled,
     ) {
-    }
-
-    public static function new(): self
-    {
-        return new self(
-            '(//table)[1]',
-            null,
-            [],
-            false,
-            '(//table/thead/tr)[1]',
-            [Section::Tbody, Section::Tfoot, Section::Tr],
-            null,
-            false,
-        );
     }
 
     public function tableXPathPosition(string $expression): self
     {
-        $query = (new DOMXPath(new DOMDocument()))->query(...);
-        $domXPath = Cloak::warning($query);
+        if ($expression === $this->tableExpression) {
+            return $this;
+        }
 
-        return match (true) {
-            $expression === $this->tableExpression => $this,
-            false === $domXPath($expression) => throw new ParserError(
+        try {
+            Warning::trap((new DOMXPath(new DOMDocument()))->query(...), $expression);
+        } catch (ErrorException $exception) {
+            throw new ParserError(
                 message: 'The xpath expression `'.$expression.'` is invalid.',
-                previous: $domXPath->errors()->last()
-            ),
-            default => new self(
-                $expression,
-                $this->caption,
-                $this->tableHeader,
-                $this->ignoreTableHeader,
-                $this->tableHeaderExpression,
-                $this->includedSections,
-                $this->formatter,
-                $this->throwOnXmlErrors,
-            ),
-        };
+                previous: $exception
+            );
+        }
+
+        return  new self(
+            $expression,
+            $this->caption,
+            $this->tableHeader,
+            $this->ignoreTableHeader,
+            $this->tableHeaderExpression,
+            $this->includedSections,
+            $this->formatter,
+            $this->throwOnXmlErrors,
+        );
     }
 
     /**
@@ -135,13 +132,13 @@ final class Parser
 
     public function ignoreTableHeader(): self
     {
-        return match ($this->ignoreTableHeader) {
+        return match (Feature::Enabled === $this->ignoreTableHeader) {
             true => $this,
             false => new self(
                 $this->tableExpression,
                 $this->caption,
                 $this->tableHeader,
-                true,
+                Feature::Enabled,
                 $this->tableHeaderExpression,
                 $this->includedSections,
                 $this->formatter,
@@ -152,13 +149,13 @@ final class Parser
 
     public function resolveTableHeader(): self
     {
-        return match ($this->ignoreTableHeader) {
+        return match (Feature::Disabled === $this->ignoreTableHeader) {
             false => $this,
             true => new self(
                 $this->tableExpression,
                 $this->caption,
                 $this->tableHeader,
-                false,
+                Feature::Disabled,
                 $this->tableHeaderExpression,
                 $this->includedSections,
                 $this->formatter,
@@ -258,7 +255,7 @@ final class Parser
 
     public function failOnXmlErrors(): self
     {
-        return match ($this->throwOnXmlErrors) {
+        return match (Feature::Enabled === $this->throwOnXmlErrors) {
             true => $this,
             false => new self(
                 $this->tableExpression,
@@ -268,14 +265,14 @@ final class Parser
                 $this->tableHeaderExpression,
                 $this->includedSections,
                 $this->formatter,
-                true,
+                Feature::Enabled,
             ),
         };
     }
 
     public function ignoreXmlErrors(): self
     {
-        return match ($this->throwOnXmlErrors) {
+        return match (Feature::Disabled === $this->throwOnXmlErrors) {
             false => $this,
             true => new self(
                 $this->tableExpression,
@@ -285,29 +282,15 @@ final class Parser
                 $this->tableHeaderExpression,
                 $this->includedSections,
                 $this->formatter,
-                false,
+                Feature::Disabled,
             ),
         };
     }
 
-    public function withFormatter(Closure $formatter): self
+    public function withFormatter(?Closure $formatter): self
     {
-        return new self(
-            $this->tableExpression,
-            $this->caption,
-            $this->tableHeader,
-            $this->ignoreTableHeader,
-            $this->tableHeaderExpression,
-            $this->includedSections,
-            $formatter,
-            $this->throwOnXmlErrors,
-        );
-    }
-
-    public function withoutFormatter(): self
-    {
-        return match (null) {
-            $this->formatter => $this,
+        return match (true) {
+            $formatter === $this->formatter => $this,
             default => new self(
                 $this->tableExpression,
                 $this->caption,
@@ -315,7 +298,7 @@ final class Parser
                 $this->ignoreTableHeader,
                 $this->tableHeaderExpression,
                 $this->includedSections,
-                null,
+                $formatter,
                 $this->throwOnXmlErrors,
             ),
         };
@@ -339,7 +322,7 @@ final class Parser
     }
 
     /**
-     * @param resource|string $filenameOrStream
+     * @param SplFileInfo|resource|string $filenameOrStream
      * @param resource|null $filenameContext
      *
      * @throws ParserError
@@ -349,20 +332,21 @@ final class Parser
      */
     public function parseFile(mixed $filenameOrStream, $filenameContext = null): Table
     {
+        if ($filenameOrStream instanceof SplFileInfo) {
+            return $this->parseHtml($filenameOrStream);
+        }
+
         if (is_resource($filenameOrStream)) {
             return $this->parseHtml($this->streamToString($filenameOrStream));
         }
 
-        $fopen = Cloak::warning(fopen(...));
-        $resource = $fopen(...match ($filenameContext) {
-            null => [$filenameOrStream, 'r'],
-            default => [$filenameOrStream, 'r', false, $filenameContext],
-        });
-
-        if (!is_resource($resource)) {
+        try {
+            /** @var resource $resource */
+            $resource = Warning::trap(fopen(...), ...['filename' => $filenameOrStream, 'mode' => 'r', 'context' => $filenameContext]);
+        } catch (ErrorException $exception) {
             throw new ParserError(
                 message: '`'.$filenameOrStream.'`: failed to open stream: No such file or directory.',
-                previous: $fopen->errors()->last()
+                previous: $exception
             );
         }
 
@@ -375,27 +359,23 @@ final class Parser
     /**
      * @throws ParserError
      * @throws SyntaxError
+     * @throws CannotInsertRecord
      *
      * @return Table<array<array-key, mixed>>
      */
-    public function parseHtml(DOMDocument|DOMElement|SimpleXMLElement|Stringable|string $source): Table
+    public function parseHtml(SplFileInfo|DOMDocument|DOMElement|SimpleXMLElement|Stringable|string $source): Table
     {
         /** @var DOMNodeList<DOMElement> $query */
         $query = (new DOMXPath($this->sourceToDomDocument($source)))->query($this->tableExpression);
         $table = $query->item(0);
-        if (!$table instanceof DOMElement) {
-            throw new ParserError('The HTML table could not be found in the submitted html.');
-        }
-
+        $table instanceof DOMElement || throw new ParserError('The HTML table could not be found in the submitted html.');
         $tagName = strtolower($table->nodeName);
-        if ('table' !== $tagName) {
-            throw new ParserError('Expected a table element to be selected; received `'.$tagName.'` instead.');
-        }
+        'table' === $tagName || throw new ParserError('Expected a table element to be selected; received `'.$tagName.'` instead.');
 
         $xpath = new DOMXPath($this->sourceToDomDocument($table));
         $header = match (true) {
             [] !== $this->tableHeader => $this->tableHeader,
-            $this->ignoreTableHeader => [],
+            Feature::Enabled === $this->ignoreTableHeader => [],
             default => $this->extractTableHeader($xpath),
         };
 
@@ -421,20 +401,20 @@ final class Parser
      */
     private function streamToString($stream): string
     {
-        $stream_get_contents = Cloak::warning(stream_get_contents(...));
-        /** @var string|false $html */
-        $html = $stream_get_contents($stream);
+        try {
+            /** @var string $result */
+            $result = Warning::trap(stream_get_contents(...), $stream);
 
-        return match (false) {
-            $html => throw new ParserError('The resource could not be read.', 0, $stream_get_contents->errors()->last()),
-            default => $html,
-        };
+            return $result;
+        } catch (ErrorException $exception) {
+            throw new ParserError(message: 'The resource could not be read.', previous: $exception);
+        }
     }
 
     /**
      * @throws ParserError
      */
-    private function sourceToDomDocument(DOMDocument|SimpleXMLElement|DOMElement|Stringable|string $document): DOMDocument
+    private function sourceToDomDocument(SplFileInfo|DOMDocument|SimpleXMLElement|DOMElement|Stringable|string $document): DOMDocument
     {
         if ($document instanceof DOMDocument) {
             return $document;
@@ -453,13 +433,22 @@ final class Parser
             return $dom;
         }
 
+        $content = (string) $document;
+        if ($document instanceof SplFileInfo) {
+            $content = '';
+            $file = $document->openFile();
+            while (!$file->eof()) {
+                $content .= $file->fgets();
+            }
+        }
+
         libxml_use_internal_errors(true);
-        $dom->loadHTML((string) $document);
+        $dom->loadHTML($content, LIBXML_NOWARNING | LIBXML_NOERROR);
         $errors = libxml_get_errors();
         libxml_clear_errors();
 
         return match (true) {
-            $this->throwOnXmlErrors && [] !== $errors => throw ParserError::dueToLibXmlErrors($errors),
+            Feature::Enabled === $this->throwOnXmlErrors && [] !== $errors => throw ParserError::dueToLibXmlErrors($errors),
             default => $dom,
         };
     }
@@ -547,7 +536,7 @@ final class Parser
             $tr->setAttribute(self::HEADER_ROW_ATTRIBUTE_NAME, 'true');
         }
 
-        return $headerRow;
+        return array_map(fn (string|null $item): string => trim((string) $item, "\u{A0} \t\n\r\0\x0B"), $headerRow);
     }
 
     /**
@@ -630,5 +619,31 @@ final class Parser
         }
 
         return $row;
+    }
+
+    /**
+     * DEPRECATION WARNING! This method will be removed in the next major point release.
+     * @deprecated since version 0.6.0
+     * @see self::withFormatter()
+     *
+     * @codeCoverageIgnore
+     */
+    #[Deprecated(message:'use Bakame\TabularData\HtmlTable\Parser::withFormatter() instead', since:'bakame/html-table:0.6.0')]
+    public function withoutFormatter(): self
+    {
+        return $this->withFormatter(null);
+    }
+
+    /**
+     * DEPRECATION WARNING! This method will be removed in the next major point release.
+     * @deprecated since version 0.6.0
+     * @see self::__construct()
+     *
+     * @codeCoverageIgnore
+     */
+    #[Deprecated(message:'use Bakame\TabularData\HtmlTable\Parser::__construct() instead', since:'bakame/html-table:0.6.0')]
+    public static function new(): self
+    {
+        return new self();
     }
 }

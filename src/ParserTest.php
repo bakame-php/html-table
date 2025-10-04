@@ -7,11 +7,17 @@ namespace Bakame\TabularData\HtmlTable;
 use DOMDocument;
 use DOMElement;
 use League\Csv\TabularDataReader;
+use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use SimpleXMLElement;
 
+#[CoversClass(Warning::class)]
+#[CoversClass(Parser::class)]
+#[CoversClass(Feature::class)]
+#[CoversClass(Section::class)]
+#[CoversClass(Table::class)]
 final class ParserTest extends TestCase
 {
     private const HTML = <<<TABLE
@@ -40,18 +46,18 @@ TABLE;
     #[Test]
     public function it_will_return_the_same_options(): void
     {
-        $parser = Parser::new();
+        $parser = new Parser();
 
-        self::assertSame(
+        self::assertEquals(
             $parser,
             $parser
                 ->tablePosition(0)
-                ->tableHeaderPosition(Section::Thead, 0)
+                ->tableHeaderPosition(Section::Thead)
                 ->includeSection(Section::Tbody, Section::Tfoot, Section::Tr)
                 ->tableHeader([])
                 ->resolveTableHeader()
                 ->ignoreXmlErrors()
-                ->withoutFormatter()
+                ->withFormatter(null)
                 ->tableCaption(null)
         );
     }
@@ -63,7 +69,7 @@ TABLE;
         $this->expectException(ParserError::class);
         $this->expectExceptionMessage('The header record contains duplicate column names: `foo`, `toto`.');
 
-        Parser::new()->tableHeader($headerRow);
+        (new Parser())->tableHeader($headerRow);
     }
 
     #[Test]
@@ -71,7 +77,7 @@ TABLE;
     {
         $this->expectException(ParserError::class);
 
-        Parser::new()->tableHeader(['foo', 1]); /* @phpstan-ignore-line */
+        (new Parser())->tableHeader(['foo', 1]); /* @phpstan-ignore-line */
     }
 
     #[Test]
@@ -80,7 +86,7 @@ TABLE;
     {
         $this->expectException(ParserError::class);
 
-        Parser::new()->tablePosition($identifier);
+        (new Parser())->tablePosition($identifier);
     }
 
     /**
@@ -102,7 +108,7 @@ TABLE;
     {
         $this->expectException(ParserError::class);
 
-        Parser::new()->tablePosition(-1);
+        (new Parser())->tablePosition(-1);
     }
 
     #[Test]
@@ -110,7 +116,7 @@ TABLE;
     {
         $this->expectException(ParserError::class);
 
-        Parser::new()->tableHeaderPosition(Section::Thead, -1); /* @phpstan-ignore-line */
+        (new Parser())->tableHeaderPosition(Section::Thead, -1); /* @phpstan-ignore-line */
     }
 
     #[Test]
@@ -118,7 +124,7 @@ TABLE;
     {
         $this->expectException(ParserError::class);
 
-        Parser::new()->tableXPathPosition('//table@@invalid');
+        (new Parser())->tableXPathPosition('//table@@invalid');
     }
 
     #[Test]
@@ -129,14 +135,14 @@ TABLE;
 HTML;
         $this->expectException(ParserError::class);
         $this->expectExceptionMessage('Expected a table element to be selected; received `p` instead.');
-        Parser::new()->tableXPathPosition('//p')->parseHtml($html);
+        (new Parser())->tableXPathPosition('//p')->parseHtml($html);
 
     }
 
     #[Test]
     public function it_can_load_the_first_html_table_found_by_default(): void
     {
-        $table = Parser::new()->parseHtml(self::HTML);
+        $table = (new Parser())->parseHtml(self::HTML);
         $header = ['prenoms', 'nombre', 'sexe', 'annee'];
         $row = [
             'prenoms' => 'Abdoulaye',
@@ -147,16 +153,16 @@ HTML;
 
         self::assertSame(['prenoms', 'nombre', 'sexe', 'annee'], $table->getHeader());
         self::assertCount(4, $table);
-        self::assertSame($row, $table->first());
+        self::assertSame($row, $table->getTabularData()->first());
 
-        $sliced = $table->slice(0, 1);
-        self::assertSame(['caption' => null, 'header' => $header, 'rows' => [$row]], $sliced->jsonSerialize());
+        $sliced = $table->getTabularData()->slice(0, 1);
+        self::assertSame([$row], iterator_to_array($sliced));
     }
 
     #[Test]
     public function it_can_load_the_first_html_table_found_by_default_without_the_header(): void
     {
-        $table = Parser::new()->ignoreTableHeader()->parseHtml(self::HTML);
+        $table = (new Parser())->ignoreTableHeader()->parseHtml(self::HTML);
 
         self::assertSame([], $table->getHeader());
         self::assertCount(4, $table);
@@ -165,13 +171,13 @@ HTML;
             '15',
             'M',
             '2004',
-        ], $table->first());
+        ], $table->getTabularData()->first());
     }
 
     #[Test]
     public function it_can_load_any_html_table_by_occurrence(): void
     {
-        $table = Parser::new()
+        $table = (new Parser())
             ->tablePosition(1)
             ->parseFile(dirname(__DIR__).'/test_files/table.html');
 
@@ -182,7 +188,7 @@ HTML;
     #[Test]
     public function it_can_load_any_html_table_by_attribute_id(): void
     {
-        $table = Parser::new()
+        $table = (new Parser())
             ->tablePosition('testb')
             ->parseFile(dirname(__DIR__).'/test_files/table.html');
 
@@ -195,7 +201,7 @@ HTML;
     {
         /** @var resource $stream */
         $stream = fopen(dirname(__DIR__).'/test_files/table.html', 'r');
-        $table = Parser::new()
+        $table = (new Parser())
             ->tablePosition('testb')
             ->tableHeaderPosition(Section::Tr)
             ->parseFile($stream);
@@ -207,7 +213,7 @@ HTML;
             'nombre' => '15',
             'sexe' => 'M',
             'annee' => '2004',
-        ], $table->first());
+        ], $table->getTabularData()->first());
 
         fclose($stream);
     }
@@ -217,7 +223,7 @@ HTML;
     {
         $this->expectException(ParserError::class);
 
-        Parser::new()->parseFile('/path/tp/my/heart.html');
+        (new Parser())->parseFile('/path/tp/my/heart.html');
     }
 
     #[Test]
@@ -236,7 +242,7 @@ HTML;
 </table>
 TABLE;
 
-        $table = Parser::new()
+        $table = (new Parser())
             ->tableHeaderPosition(Section::Tbody)
             ->parseHtml($html);
 
@@ -247,7 +253,7 @@ TABLE;
             'nombre' => '15',
             'sexe' => 'M',
             'annee' => '2004',
-        ], $table->nth(0));
+        ], $table->getTabularData()->nth(0));
     }
 
     #[Test]
@@ -255,7 +261,7 @@ TABLE;
     {
         $this->expectExceptionObject(new ParserError('The HTML table could not be found in the submitted html.'));
 
-        Parser::new()->parseHtml('vasdfadadf');
+        (new Parser())->parseHtml('vasdfadadf');
     }
 
     #[Test]
@@ -263,13 +269,13 @@ TABLE;
     {
         $this->expectExceptionObject(new ParserError('The HTML table could not be found in the submitted html.'));
 
-        Parser::new()->parseHtml('<ol><li>foo</li></ol>');
+        (new Parser())->parseHtml('<ol><li>foo</li></ol>');
     }
 
     #[Test]
     public function it_will_use_the_submitted_headers(): void
     {
-        $parser = Parser::new()
+        $parser = (new Parser())
             ->tableHeader(['firstname', 'count', 'gender', 'year']);
 
         $table = $parser->parseHtml(self::HTML);
@@ -280,7 +286,7 @@ TABLE;
             'count' => '15',
             'gender' => 'M',
             'year' => '2004',
-        ], $table->first());
+        ], $table->getTabularData()->first());
     }
 
 
@@ -299,7 +305,7 @@ TABLE;
 TABLE;
 
         $header = [3 => 'Annee', 2 => 'Sexe', 0 => 'Firstname', 1 => 'Count'];
-        $table = Parser::new()
+        $table = (new Parser())
             ->tableHeader($header)
             ->parseHtml($html);
 
@@ -309,10 +315,10 @@ TABLE;
             'Sexe' => 'M',
             'Firstname' => 'Abel',
             'Count' => '14',
-        ], $table->first());
+        ], $table->getTabularData()->first());
 
         $header = [3 => 'Annee', 0 => 'Firstname', 1 => 'Count'];
-        $table = Parser::new()
+        $table = (new Parser())
             ->tableHeader($header)
             ->parseHtml($html);
 
@@ -321,7 +327,7 @@ TABLE;
             'Annee' => '2004',
             'Firstname' => 'Abel',
             'Count' => '14',
-        ], $table->first());
+        ], $table->getTabularData()->first());
     }
 
     #[Test]
@@ -338,10 +344,11 @@ TABLE;
 </table>
 TABLE;
 
-        $table = Parser::new()->parseHtml($html);
+        $table = (new Parser())->parseHtml($html);
+        $data = $table->getTabularData();
 
-        self::assertSame($table->nth(1), ['Abdoulaye', 'Abdoulaye', 'Abdoulaye', '2004']);
-        self::assertSame($table->nth(0), ['prenoms', 'nombre', 'sexe', 'annee']);
+        self::assertSame($data->nth(1), ['Abdoulaye', 'Abdoulaye', 'Abdoulaye', '2004']);
+        self::assertSame($data->nth(0), ['prenoms', 'nombre', 'sexe', 'annee']);
     }
 
     #[Test]
@@ -361,11 +368,13 @@ TABLE;
         $dom = new DOMDocument();
         $dom->loadHTML($html);
 
-        $table = Parser::new()->parseHtml($dom);
+        $table = (new Parser())->parseHtml($dom);
+
+        $tabularData = $table->getTabularData();
 
         self::assertSame([], $table->getHeader());
-        self::assertSame($table->first(), ['Abdoulaye', 'Abdoulaye', 'Abdoulaye', '2004']);
-        self::assertSame($table->nth(1), ['Abel', '14', 'M', '2004']);
+        self::assertSame($tabularData->first(), ['Abdoulaye', 'Abdoulaye', 'Abdoulaye', '2004']);
+        self::assertSame($tabularData->nth(1), ['Abel', '14', 'M', '2004']);
     }
 
     #[Test]
@@ -377,7 +386,7 @@ TABLE;
 
         $this->expectException(ParserError::class);
 
-        Parser::new()
+        (new Parser())
             ->failOnXmlErrors()
             ->parseHtml($html);
     }
@@ -387,7 +396,7 @@ TABLE;
     {
         $this->expectException(ParserError::class);
 
-        Parser::new()->parseHtml(new DOMElement('p', 'I know who you are'));
+        (new Parser())->parseHtml(new DOMElement('p', 'I know who you are'));
     }
 
     #[Test]
@@ -403,7 +412,7 @@ TABLE;
         /** @var SimpleXMLElement $simpleXML */
         $simpleXML = simplexml_load_string($html);
 
-        $table = Parser::new()
+        $table = (new Parser())
             ->tableHeaderPosition(Section::Tbody)
             ->parseHtml($simpleXML);
 
@@ -422,7 +431,7 @@ TABLE;
 </table>
 TABLE;
 
-        $table = Parser::new()
+        $table = (new Parser())
             ->tableHeaderPosition(Section::Tr)
             ->parseHtml($html);
 
@@ -444,12 +453,12 @@ TABLE;
 </table>
 TABLE;
 
-        $table = Parser::new()
+        $table = (new Parser())
             ->excludeSection(Section::Tfoot)
             ->parseHtml($html);
 
         self::assertSame([], $table->getHeader());
-        self::assertSame([], $table->first());
+        self::assertSame([], $table->getTabularData()->first());
     }
 
     #[Test]
@@ -457,7 +466,7 @@ TABLE;
     {
         /** @var resource $stream */
         $stream = fopen(dirname(__DIR__).'/test_files/table.html', 'r');
-        $table = Parser::new()
+        $table = (new Parser())
             ->tablePosition('testb')
             ->tableHeaderPosition(Section::Tr)
             ->withFormatter(function (array $record): array {
@@ -476,7 +485,7 @@ TABLE;
             'nombre' => 15,
             'sexe' => 'M',
             'annee' => 2004,
-        ], $table->first());
+        ], $table->getTabularData()->first());
 
         fclose($stream);
     }
@@ -532,18 +541,18 @@ TABLE;
             fn (int $carry, array $record): int => $carry + (array_count_values($record)[$value] ?? 0),
             0
         );
-        $table = Parser::new()->parseHtml($table);
+        $table = (new Parser())->parseHtml($table);
 
-        self::assertSame(2, $reducer($table, 'colspan'));
-        self::assertSame(2, $reducer($table, 'rowspan'));
-        self::assertSame(6, $reducer($table, 'colspan+rowspan'));
+        self::assertSame(2, $reducer($table->getTabularData(), 'colspan'));
+        self::assertSame(2, $reducer($table->getTabularData(), 'rowspan'));
+        self::assertSame(6, $reducer($table->getTabularData(), 'colspan+rowspan'));
     }
 
     #[Test]
     #[DataProvider('providesCaption')]
     public function it_can_load_the_table_caption(string $table, ?string $defaultCaption, ?string $expected): void
     {
-        self::assertSame($expected, Parser::new()->tableCaption($defaultCaption)->parseHtml($table)->getCaption());
+        self::assertSame($expected, (new Parser())->tableCaption($defaultCaption)->parseHtml($table)->getCaption());
     }
 
     /**

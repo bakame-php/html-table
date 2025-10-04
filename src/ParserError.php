@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Bakame\TabularData\HtmlTable;
 
-use InvalidArgumentException;
+use Exception;
 use LibXMLError;
 
 use function array_count_values;
@@ -16,7 +16,7 @@ use function sprintf;
 
 use const PHP_EOL;
 
-class ParserError extends InvalidArgumentException
+class ParserError extends Exception
 {
     /** @var array<string>  */
     private array $duplicateColumnNames = [];

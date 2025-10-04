@@ -2,12 +2,23 @@
 
 All Notable changes to `bakame/html-table` will be documented in this file.
 
+# [Next](https://github.com/bakame-php/html-table/compare/0.5.0...main) - TBD
+
+## What's Changed
+
+* **BC BREAK:** the `Table` class now implements the `TabularDataProvider` instead of the `TabularDataReader` interface.
+* **BC BREAK:** the `ParserError` class now extends the `Exception` instead of the `InvalidArgumentException` exception class.
+* **BC BREAK:** the `Parser::withoutFormatter` is deprecated; use `Parser::withFormatter(null)` instead.
+* The `Parser::new` static constructor is deprecated use the default constructor instead.
+* Boolean parameters are now replaced by `Enum` for maintenance and readability.
+* Adding `SplFileInfo` to `parseHTML` and `parseFile`
+
 # [0.5.0](https://github.com/bakame-php/html-table/compare/0.4.0...0.5.0) - 2025-07-06
 
 ## What's Changed
 
 * Upgrade dependencies on `aide-error` to version `0.2.0`
-* fix use statement by @tacman in https://github.com/bakame-php/html-table/pull/6
+* fix use statements by @tacman in https://github.com/bakame-php/html-table/pull/6
 
 ## New Contributors
 
